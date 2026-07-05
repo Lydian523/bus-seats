@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#2E6B4E">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>山友團座位表 v5.0</title>
+<title>山友團座位表 v5.3</title>
 <style>
   :root{
     --green:#2E6B4E; --green-dk:#24523C; --green-lt:#DFF0E2;
@@ -279,6 +279,43 @@
     font-size:13px;color:var(--muted);
   }
   footer button{background:none;border:none;color:var(--muted);font-size:13px;text-decoration:underline;padding:4px 8px}
+
+
+
+  /* ── 手機版修正：避免狀態列、未排名單、車圖互相壓住 ── */
+  @media (max-width:899px){
+    header{padding:calc(env(safe-area-inset-top) + 8px) 12px 8px}
+    .trip-name{font-size:19px}
+    .trip-sub{font-size:12px;flex-wrap:wrap;gap:5px}
+    .btn-share{padding:8px 12px;font-size:15px;white-space:nowrap}
+    nav button{padding:12px 4px;font-size:18px}
+    .statusbar{
+      padding:8px 12px;font-size:15px;line-height:1.35;
+      gap:6px;min-height:0;align-items:flex-start;position:relative;z-index:5;
+      overflow:visible;
+    }
+    .statusbar .status-hint{flex:1 1 100%;min-width:0}
+    .statusbar .big{font-size:19px}
+    .statusbar .chip,.statusbar .barbtn{font-size:14px;padding:5px 10px;line-height:1.25}
+    .statusbar .chip.miss{font-size:14px;padding:5px 9px}
+    main{display:block;padding:8px 10px 14px;overflow-x:hidden}
+    .chart-wrap{width:100%;overflow:visible}
+    .roster-strip{
+      position:relative;z-index:4;display:flex;gap:8px;
+      padding:0 16px 10px 2px;margin:0 0 6px 0;
+      overflow-x:auto;overflow-y:hidden;max-width:100%;
+      -webkit-overflow-scrolling:touch;
+    }
+    .roster-strip .pbtn{
+      flex:0 0 auto;min-width:128px;max-width:168px;
+      padding:10px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .roster-strip .pbtn small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .bus{max-width:calc(100vw - 20px);margin:0 auto;padding:10px 10px 14px}
+    .rc-start{max-width:calc(100vw - 20px);margin:0 auto 12px;padding:18px;font-size:23px}
+    footer{padding-bottom:calc(env(safe-area-inset-bottom) + 18px)}
+    .sheet{padding-bottom:calc(env(safe-area-inset-bottom) + 34px)}
+  }
 
   @media (min-width:900px){
     aside{display:flex}
@@ -729,7 +766,7 @@ function renderStatus(){
     const un=active.filter(m=>!seated.has(m.id)).length;
     const fillable=active.filter(m=>!seated.has(m.id)&&!isLeave(m.id)).length;
     const free=seatsOf(t.layoutV).filter(s=>!t.assign[s.id]).length;
-    sb.innerHTML=ro+'<span>點<b>名單上的人</b>，再點<b>空位</b>。未排名單會直接顯示出席／請假。</span>'+undo+
+    sb.innerHTML=ro+'<span class="status-hint">點<b>名單上的人</b>，再點<b>空位</b>。未排名單會直接顯示出席／請假。</span>'+undo+
       (fillable&&free?'<button class="barbtn primary" onclick="openAutoFillSeats()">自動填滿剩餘空位</button>':'')+
       (assignedN?'<button class="barbtn danger" onclick="openClearSeats()">全部移出座位</button>':'')+
       (un?'<span class="chip">還有 '+un+' 人未排</span>':'<span class="chip ok">全部排好 ✓</span>');
@@ -739,7 +776,7 @@ function renderStatus(){
   }else{
     const targets=rcTargets(t);
     if(!t.rcActive){
-      sb.innerHTML=ro+'<span>到休息站，按「開始點名」，大家回車時點座位打勾。</span>'+undo;
+      sb.innerHTML=ro+'<span class="status-hint">到休息站，按「開始點名」，大家回車時點座位打勾。</span>'+undo;
     }else{
       const missing=rcMissing(t);
       if(missing.length===0 && targets.length){
