@@ -265,6 +265,28 @@
   }
   .mini.off{color:var(--muted)}
 
+
+  /* ── 手機版名單總覽 ── */
+  .roster-grid-btn{display:none}
+  .roster-grid-sheet{max-width:760px;border-radius:20px 20px 0 0;padding-top:16px}
+  .grid-tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;margin-bottom:8px;-webkit-overflow-scrolling:touch}
+  .grid-tab{flex:none;border:1.5px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:8px 13px;font-size:15px;font-weight:800}
+  .grid-tab.on{background:var(--green);border-color:var(--green);color:#fff}
+  .member-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-bottom:8px}
+  .member-card{position:relative;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:12px 10px;min-height:78px;color:var(--ink);font-size:16px;font-weight:800;box-shadow:0 1px 0 rgba(0,0,0,.03)}
+  .member-card .name{display:block;font-size:18px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:30px}
+  .member-card .meta{display:block;margin-top:7px;font-size:13px;font-weight:700;color:var(--muted);line-height:1.3}
+  .member-card .badges{position:absolute;right:8px;top:8px;display:flex;gap:4px}
+  .member-card .pill{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;min-width:20px;height:20px;padding:0 5px;font-size:11px;font-weight:900;border:1px solid transparent}
+  .member-card .pill.note{background:#FFE39B;border-color:#D6A437;color:#7A4B00}
+  .member-card .pill.phone{background:#EEF6FF;border-color:#B8CBE1;color:#355C80}
+  .member-card.leave{background:#F1F2F0;color:#98A09B;border-color:#C9CEC9}
+  .member-card.unassigned{border-color:#DDBB64;background:#FFF9E8}
+  .member-card.assigned{border-color:#9DB3A6;background:#F4F8F5}
+  .member-card.missing{border-color:var(--red);background:#FFF0F0;box-shadow:inset 0 -5px 0 rgba(192,57,43,.70)}
+  .member-card.boarded{border-color:var(--green);background:var(--green-lt);box-shadow:inset 0 -5px 0 var(--green)}
+  .grid-summary{font-size:14px;color:var(--muted);line-height:1.5;margin:-4px 0 10px}
+
   #toast{
     position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);
     transform:translateX(-50%);background:var(--ink);color:#fff;
@@ -297,6 +319,7 @@
     .statusbar .status-hint{flex:1 1 100%;min-width:0}
     .statusbar .big{font-size:19px}
     .statusbar .chip,.statusbar .barbtn{font-size:14px;padding:5px 10px;line-height:1.25}
+    .roster-grid-btn{display:inline-flex;align-items:center}
     .statusbar .chip.miss{font-size:14px;padding:5px 9px}
     main{display:block;padding:8px 10px 14px;overflow-x:hidden}
     .chart-wrap{width:100%;overflow:visible}
@@ -315,6 +338,9 @@
     .rc-start{max-width:calc(100vw - 20px);margin:0 auto 12px;padding:18px;font-size:23px}
     footer{padding-bottom:calc(env(safe-area-inset-bottom) + 18px)}
     .sheet{padding-bottom:calc(env(safe-area-inset-bottom) + 34px)}
+    .roster-grid-sheet{max-height:92vh}
+    .member-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+    .member-card{padding:11px 9px;min-height:76px}
   }
 
   @media (min-width:900px){
@@ -761,31 +787,32 @@ function renderStatus(){
   const goN=active.length-leaveN;
   const assignedN=Object.keys(t.assign||{}).length;
   const undo=(editable() && mode!=='rc')?undoLabelHtml():'';
+  const gridBtn='<button class="barbtn primary roster-grid-btn" onclick="openRosterGrid()">名單總覽</button>';
   if(mode==='seat'){
     const seated=new Set(Object.values(t.assign));
     const un=active.filter(m=>!seated.has(m.id)).length;
     const fillable=active.filter(m=>!seated.has(m.id)&&!isLeave(m.id)).length;
     const free=seatsOf(t.layoutV).filter(s=>!t.assign[s.id]).length;
-    sb.innerHTML=ro+'<span class="status-hint">點<b>名單上的人</b>，再點<b>空位</b>。未排名單會直接顯示出席／請假。</span>'+undo+
+    sb.innerHTML=ro+'<span class="status-hint">點<b>名單上的人</b>，再點<b>空位</b>。未排名單會直接顯示出席／請假。</span>'+gridBtn+undo+
       (fillable&&free?'<button class="barbtn primary" onclick="openAutoFillSeats()">自動填滿剩餘空位</button>':'')+
       (assignedN?'<button class="barbtn danger" onclick="openClearSeats()">全部移出座位</button>':'')+
       (un?'<span class="chip">還有 '+un+' 人未排</span>':'<span class="chip ok">全部排好 ✓</span>');
   }else if(mode==='att'){
-    sb.innerHTML=ro+'<span class="big ok">出席 '+goN+' 人</span><span class="big" style="color:var(--muted)">請假 '+leaveN+' 人</span>'+undo+
+    sb.innerHTML=ro+'<span class="big ok">出席 '+goN+' 人</span><span class="big" style="color:var(--muted)">請假 '+leaveN+' 人</span>'+gridBtn+undo+
       '<span style="font-size:14px;color:var(--muted)">點座位或右邊未排名單，都能標請假／取消請假</span>';
   }else{
     const targets=rcTargets(t);
     if(!t.rcActive){
-      sb.innerHTML=ro+'<span class="status-hint">到休息站，按「開始點名」，大家回車時點座位打勾。</span>'+undo;
+      sb.innerHTML=ro+'<span class="status-hint">到休息站，按「開始點名」，大家回車時點座位打勾。</span>'+gridBtn+undo;
     }else{
       const missing=rcMissing(t);
       if(missing.length===0 && targets.length){
         sb.classList.add('rc-ok');
-        sb.innerHTML='<span class="big ok">全員到齊 ✓（'+targets.length+' 人）</span>'+undo+
+        sb.innerHTML='<span class="big ok">全員到齊 ✓（'+targets.length+' 人）</span>'+gridBtn+undo+
           '<span style="font-size:14px;color:var(--green)">座位表外框已轉綠，這一輪點名完成。</span>';
       }else{
         sb.classList.add('rc-warn');
-        sb.innerHTML='<span class="big warn">點名中，還差 '+missing.length+' 人</span>'+undo+
+        sb.innerHTML='<span class="big warn">點名中，還差 '+missing.length+' 人</span>'+gridBtn+undo+
           '<span style="font-size:14px;color:var(--red)">紅框代表尚未完成。</span>'+
           missing.map(sid=>{
             const m=memberById(t.assign[sid]);
@@ -1014,12 +1041,127 @@ function autoFillSeats(){
   toast('已自動安排 '+assigned+' 人'+(detail.length?'：'+detail.join('、'):''));
 }
 
+
+/* ══════════════════ 手機版名單總覽 ══════════════════ */
+let rosterGridFilter='';
+function defaultRosterGridFilter(){
+  if(mode==='seat') return 'unassigned';
+  if(mode==='rc' && trip().rcActive) return 'missing';
+  return 'all';
+}
+function seatInfoByMember(mid){
+  const sid=seatOf(mid);
+  if(!sid) return null;
+  return seatsOf(trip().layoutV).find(s=>s.id===sid) || null;
+}
+function memberGridState(m){
+  const t=trip();
+  const sid=seatOf(m.id);
+  const seat=sid ? seatsOf(t.layoutV).find(s=>s.id===sid) : null;
+  const leave=isLeave(m.id);
+  const boarded=sid && (t.boarded||[]).includes(sid);
+  const missing=(mode==='rc' && t.rcActive && sid && !leave && !boarded);
+  return {sid, seat, leave, boarded, missing, assigned:!!sid};
+}
+function rosterGridTabs(){
+  const tabs=[
+    ['all','全部'],['unassigned','未排'],['assigned','已排'],['present','出席'],['leave','請假']
+  ];
+  if(mode==='rc' && trip().rcActive) tabs.push(['missing','未到']);
+  return tabs.map(([id,name])=>'<button class="grid-tab '+(rosterGridFilter===id?'on':'')+'" onclick="openRosterGrid(\''+id+'\')">'+name+'</button>').join('');
+}
+function rosterGridMembers(){
+  const list=activeMembers().slice().sort((a,b)=>{
+    const sa=memberGridState(a), sb=memberGridState(b);
+    const na=sa.seat?sa.seat.no:999, nb=sb.seat?sb.seat.no:999;
+    if(rosterGridFilter==='assigned' || rosterGridFilter==='missing') return na-nb;
+    if(na!==nb && (sa.assigned||sb.assigned)) return na-nb;
+    return String(a.name||'').localeCompare(String(b.name||''),'zh-Hant');
+  });
+  return list.filter(m=>{
+    const st=memberGridState(m);
+    if(rosterGridFilter==='unassigned') return !st.assigned;
+    if(rosterGridFilter==='assigned') return st.assigned;
+    if(rosterGridFilter==='present') return !st.leave;
+    if(rosterGridFilter==='leave') return st.leave;
+    if(rosterGridFilter==='missing') return st.missing;
+    return true;
+  });
+}
+function rosterGridSummary(){
+  const active=activeMembers();
+  const seated=new Set(Object.values(trip().assign||{}));
+  const un=active.filter(m=>!seated.has(m.id)).length;
+  const leaveN=active.filter(m=>isLeave(m.id)).length;
+  const assignedN=active.length-un;
+  let s='共 '+active.length+' 人｜已排 '+assignedN+'｜未排 '+un+'｜請假 '+leaveN;
+  if(mode==='rc' && trip().rcActive) s+='｜未到 '+rcMissing(trip()).length;
+  return s;
+}
+function rosterGridCard(m){
+  const st=memberGridState(m);
+  const cls=['member-card'];
+  if(st.leave) cls.push('leave');
+  else if(st.missing) cls.push('missing');
+  else if(st.boarded) cls.push('boarded');
+  else if(st.assigned) cls.push('assigned');
+  else cls.push('unassigned');
+  const gc=groupClassName(m); if(gc) cls.push(gc);
+  const meta=[];
+  if(st.seat) meta.push(st.seat.no+' 號'); else meta.push('未排');
+  if(st.leave) meta.push('請假');
+  else if(mode==='rc' && trip().rcActive) meta.push(st.boarded?'已到':'未到');
+  else meta.push('出席');
+  const gp=groupLabel(m); if(gp) meta.push(gp);
+  const sp=validSeatPref(m.seatPref); if(sp) meta.push('偏好：'+seatPrefName(sp));
+  const badges='<span class="badges">'+(hasMemberNote(m)?'<span class="pill note">備</span>':'')+(telHref(m.phone)?'<span class="pill phone">☎</span>':'')+'</span>';
+  return '<button class="'+cls.join(' ')+'" onclick="tapRosterGridMember(\''+m.id+'\')">'+badges+'<span class="name">'+esc(m.name)+'</span><span class="meta">'+esc(meta.join('・'))+'</span></button>';
+}
+function openRosterGrid(filter){
+  rosterGridFilter=filter || rosterGridFilter || defaultRosterGridFilter();
+  const members=rosterGridMembers();
+  const title = mode==='seat' ? '排座位名單總覽' : mode==='att' ? '出席名單總覽' : '點名名單總覽';
+  $('sheet').className='sheet roster-grid-sheet';
+  $('sheet').innerHTML='<h2>'+title+'</h2><div class="note">手機版格狀檢視。點人會依目前頁面執行動作。</div><div class="grid-tabs">'+rosterGridTabs()+'</div><div class="grid-summary">'+esc(rosterGridSummary())+'</div><div class="member-grid">'+(members.map(rosterGridCard).join('') || '<div class="hint">這個篩選目前沒有人。</div>')+'</div><div class="acts"><button class="act cancel" onclick="closeSheet()">關閉</button></div>';
+  $('overlay').classList.add('show');
+}
+function tapRosterGridMember(mid){
+  const m=memberById(mid); if(!m) return;
+  const st=memberGridState(m);
+  if(!editable()){
+    if(st.seat) openContactActions(st.seat, mid, true);
+    return;
+  }
+  if(mode==='seat'){
+    if(!st.assigned){ pending={kind:'assign',memberId:mid}; closeSheet(); renderAll(); toast('請點「'+m.name+'」要坐的座位'); }
+    else openContactActions(st.seat, mid, false);
+    return;
+  }
+  if(mode==='att'){
+    toggleLeaveMember(mid);
+    openRosterGrid(rosterGridFilter);
+    return;
+  }
+  if(mode==='rc'){
+    const t=trip();
+    if(t.rcActive && st.sid && !st.leave){
+      const i=t.boarded.indexOf(st.sid);
+      if(i>=0) t.boarded.splice(i,1); else t.boarded.push(st.sid);
+      touch(); renderAll(); openRosterGrid(rosterGridFilter);
+    }else if(st.seat){
+      openContactActions(st.seat, mid, false);
+    }else{
+      toast('這位尚未排座位');
+    }
+  }
+}
+
 /* ══════════════════ 彈出視窗 ══════════════════ */
 function sheetHTML(html){
   $('sheet').innerHTML=html;
   $('overlay').classList.add('show');
 }
-function closeSheet(){ $('overlay').classList.remove('show'); }
+function closeSheet(){ $('overlay').classList.remove('show'); $('sheet').className='sheet'; }
 let _acts=[];
 function contactNote(m){
   if(!m) return '（資料已移除）';
