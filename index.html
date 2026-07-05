@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#2E6B4E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>山友團座位表</title>
+<style>
+  :root{
+    --green:#2E6B4E; --green-dk:#24523C; --green-lt:#DFF0E2;
+    --ink:#26323F; --muted:#7A8683; --bg:#F3F4F1; --card:#FFFFFF;
+    --line:#C7CEC9; --leave:#E3E5E2; --amber:#F2B705; --red:#C0392B;
+    --seat-h:46px; --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:"PingFang TC","Heiti TC","Microsoft JhengHei",system-ui,sans-serif;
+    background:var(--bg);color:var(--ink);font-size:17px;
+    display:flex;flex-direction:column;min-height:100vh;
+  }
+  button{font-family:inherit}
+
+  /* ── 頂部 ── */
+  header{
+    background:var(--green);color:#fff;
+    padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;
+  }
+  .trip-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .trip-btn{background:none;border:none;color:#fff;text-align:left;min-width:0}
+  .trip-name{font-size:20px;font-weight:700;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .trip-name::after{content:" ▾";font-size:14px;opacity:.8}
+  .trip-sub{font-size:13px;opacity:.85;margin-top:2px;display:flex;gap:8px;align-items:center}
+  .syncdot{display:inline-flex;align-items:center;gap:4px}
+  .syncdot i{width:8px;height:8px;border-radius:50%;background:#B9C4BE;display:inline-block}
+  .syncdot.ok i{background:#8FE3AE}
+  .syncdot.busy i{background:var(--amber)}
+  .syncdot.err i{background:#F1948A}
+  .btn-share{
+    flex:none;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.45);
+    color:#fff;border-radius:10px;padding:9px 14px;font-size:15px;font-weight:600;
+  }
+
+  nav{display:flex;background:var(--card);border-bottom:1px solid var(--line)}
+  nav button{
+    flex:1;padding:14px 4px;font-size:18px;font-weight:700;color:var(--muted);
+    background:none;border:none;border-bottom:4px solid transparent;
+  }
+  nav button.on{color:var(--green);border-bottom-color:var(--green)}
+
+  .statusbar{
+    padding:10px 16px;font-size:16px;background:#FBFCFA;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:48px;
+  }
+  .statusbar .big{font-size:20px;font-weight:800}
+  .statusbar .warn{color:var(--red)}
+  .statusbar .ok{color:var(--green)}
+  .chip{
+    display:inline-block;background:#fff;border:1.5px solid var(--line);
+    border-radius:999px;padding:5px 12px;font-size:15px;font-weight:600;
+  }
+  .chip.miss{border-color:var(--red);color:var(--red)}
+  .chip.ro{background:#FFF3E8;border-color:#E5B98F;color:#9A5B1F}
+
+  .pending{
+    background:#FFF7DF;border-bottom:2px solid var(--amber);
+    padding:10px 16px;font-size:16px;font-weight:700;display:none;
+    align-items:center;justify-content:space-between;gap:8px;
+  }
+  .pending.show{display:flex}
+  .pending button{background:none;border:1.5px solid var(--ink);border-radius:8px;padding:6px 12px;font-size:15px;font-weight:600;color:var(--ink)}
+
+  main{flex:1;display:flex;gap:14px;padding:14px;max-width:1080px;margin:0 auto;width:100%}
+  .chart-wrap{flex:1;min-width:0}
+
+  .bus{
+    background:var(--card);border:2.5px solid var(--ink);border-radius:26px 26px 16px 16px;
+    padding:10px 12px 14px;max-width:430px;margin:0 auto;
+  }
+  .bus-head{
+    text-align:center;font-size:14px;color:var(--muted);font-weight:700;
+    border-bottom:2px dashed var(--line);padding:4px 0 8px;margin-bottom:10px;
+    letter-spacing:.35em;
+  }
+  .cabin{display:flex;align-items:stretch}
+  .col{display:flex;flex-direction:column;gap:6px;flex:1}
+  .aisle{width:34px;flex:none}
+  .seatrow{display:flex;gap:6px}
+  .space{
+    display:flex;align-items:center;justify-content:center;
+    color:var(--muted);font-size:12px;letter-spacing:.2em;min-height:26px;
+  }
+  .space.grow{flex:1}
+  .space span{border:1.5px dashed var(--line);border-radius:8px;padding:2px 10px}
+
+  .seat{
+    flex:1;height:var(--seat-h);border-radius:9px;position:relative;
+    border:1.5px dashed var(--line);background:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:16px;font-weight:700;color:var(--ink);
+    user-select:none;-webkit-user-select:none;
+  }
+  .seat .no{position:absolute;top:2px;left:5px;font-size:10px;font-weight:600;color:#ADB6B1}
+  .seat.occ{border-style:solid;border-color:#9DB3A6;background:#F4F8F5}
+  .seat.leave{background:var(--leave);border:1.5px solid #C9CEC9;color:#98A09B}
+  .seat.leave .tag{position:absolute;bottom:2px;right:5px;font-size:10px;font-weight:700;color:#98A09B}
+  .seat.boarded{background:var(--green-lt);border:2px solid var(--green);color:var(--green-dk)}
+  .seat.boarded::after{content:"✓";position:absolute;top:1px;right:5px;font-size:13px;font-weight:900;color:var(--green)}
+  .seat.sel{outline:3px solid var(--amber);outline-offset:1px}
+  .seat:active{transform:scale(.96)}
+
+  aside{width:280px;flex:none;display:none;flex-direction:column;gap:10px}
+  .panel{background:var(--card);border:1.5px solid var(--line);border-radius:var(--radius);padding:12px}
+  .panel h3{font-size:15px;color:var(--muted);font-weight:700;margin-bottom:8px}
+  .plist{display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow-y:auto}
+  .pbtn{
+    text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:10px;
+    padding:10px 12px;font-size:17px;font-weight:700;color:var(--ink);
+  }
+  .pbtn small{display:block;font-size:13px;font-weight:400;color:var(--muted);margin-top:2px}
+  .pbtn.sel{border-color:var(--amber);background:#FFF7DF}
+  .hint{color:var(--muted);font-size:15px;line-height:1.6}
+
+  .roster-strip{display:flex;gap:8px;overflow-x:auto;padding:0 2px 10px;-webkit-overflow-scrolling:touch}
+  .roster-strip .pbtn{flex:none;padding:9px 14px}
+  .roster-strip:empty{display:none}
+
+  .rc-start{
+    display:block;width:100%;max-width:430px;margin:0 auto 14px;
+    background:var(--green);color:#fff;border:none;border-radius:16px;
+    padding:20px;font-size:24px;font-weight:800;letter-spacing:.1em;
+    box-shadow:0 3px 0 var(--green-dk);
+  }
+  .rc-start:active{transform:translateY(2px);box-shadow:none}
+  .rc-done{background:#fff;color:var(--green);border:2.5px solid var(--green);box-shadow:none}
+
+  /* ── 彈出視窗 ── */
+  .overlay{
+    position:fixed;inset:0;background:rgba(30,40,36,.45);display:none;
+    align-items:flex-end;justify-content:center;z-index:50;
+  }
+  .overlay.show{display:flex}
+  .sheet{
+    background:#fff;width:100%;max-width:520px;border-radius:20px 20px 0 0;
+    padding:20px 18px calc(env(safe-area-inset-bottom) + 20px);
+    max-height:88vh;overflow-y:auto;
+  }
+  .sheet h2{font-size:22px;font-weight:800;margin-bottom:2px}
+  .sheet .note{font-size:15px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+  .sheet .note b{color:var(--ink)}
+  .acts{display:flex;flex-direction:column;gap:10px}
+  .act{
+    width:100%;padding:15px;font-size:18px;font-weight:700;border-radius:12px;
+    border:1.5px solid var(--line);background:#fff;color:var(--ink);text-align:center;
+  }
+  .act.primary{background:var(--green);border-color:var(--green);color:#fff}
+  .act.danger{color:var(--red);border-color:#E4C4BF}
+  .act.cancel{border:none;color:var(--muted);font-weight:600;padding:10px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:14px;font-weight:700;color:var(--muted);margin-bottom:6px}
+  .field input,.field textarea{
+    width:100%;padding:12px;font-size:18px;font-family:inherit;
+    border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);
+  }
+  .field textarea{min-height:90px;resize:vertical}
+  .row2{display:flex;gap:10px}
+  .row2 .act{flex:1}
+  .listrow{
+    display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #EDEFEC;
+  }
+  .listrow .grow{flex:1;min-width:0}
+  .listrow .nm{font-size:17px;font-weight:700}
+  .listrow .nm small{font-weight:400;color:var(--muted);font-size:13px;display:block}
+  .mini{
+    background:#fff;border:1.5px solid var(--line);border-radius:8px;
+    padding:7px 12px;font-size:14px;font-weight:600;color:var(--ink);flex:none;
+  }
+  .mini.off{color:var(--muted)}
+
+  #toast{
+    position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);
+    transform:translateX(-50%);background:var(--ink);color:#fff;
+    padding:11px 20px;border-radius:999px;font-size:16px;font-weight:600;
+    opacity:0;transition:opacity .25s;pointer-events:none;z-index:60;white-space:nowrap;
+    max-width:92vw;overflow:hidden;text-overflow:ellipsis;
+  }
+  #toast.show{opacity:1}
+
+  footer{
+    text-align:center;padding:10px 0 calc(env(safe-area-inset-bottom) + 14px);
+    font-size:13px;color:var(--muted);
+  }
+  footer button{background:none;border:none;color:var(--muted);font-size:13px;text-decoration:underline;padding:4px 8px}
+
+  @media (min-width:900px){
+    aside{display:flex}
+    .roster-strip{display:none}
+    :root{--seat-h:50px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="trip-row">
+    <button class="trip-btn" onclick="openTrips()">
+      <div class="trip-name" id="tripName">—</div>
+      <div class="trip-sub">
+        <span id="tripDate"></span>
+        <span class="syncdot" id="syncdot"><i></i><span id="syncText">尚未設定同步</span></span>
+      </div>
+    </button>
+    <button class="btn-share" onclick="shareChart()">傳到 LINE</button>
+  </div>
+</header>
+
+<nav>
+  <button id="tab-seat" class="on" onclick="setMode('seat')">排座位</button>
+  <button id="tab-att"  onclick="setMode('att')">出席</button>
+  <button id="tab-rc"   onclick="setMode('rc')">點名</button>
+</nav>
+
+<div class="statusbar" id="statusbar"></div>
+<div class="pending" id="pending">
+  <span id="pendingText"></span>
+  <button onclick="cancelPending()">取消</button>
+</div>
+
+<main>
+  <div class="chart-wrap">
+    <div class="roster-strip" id="rosterStrip"></div>
+    <button class="rc-start" id="rcBtn" style="display:none" onclick="toggleRollcall()">開始點名</button>
+    <div class="bus">
+      <div class="bus-head">車　頭</div>
+      <div class="cabin">
+        <div class="col" id="colL"></div>
+        <div class="aisle"></div>
+        <div class="col" id="colR"></div>
+      </div>
+    </div>
+  </div>
+  <aside>
+    <div class="panel">
+      <h3 id="asideTitle">尚未排座位</h3>
+      <div class="plist" id="rosterSide"></div>
+    </div>
+  </aside>
+</main>
+
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<div id="toast"></div>
+
+<footer>
+  山友團座位表
+  <button onclick="openAdmin()">管理（維護者用）</button>
+</footer>
+
+<script>
+"use strict";
+/* ══════════════════ 座位版型 ══════════════════
+   換車時：在 LAYOUTS 新增一個版本（例如 v2），
+   再把 DEFAULT_LAYOUT 改成 'v2'。舊行程仍會用舊版型顯示。 */
+const LAYOUTS = {
+  v1: {
+    left: [
+      {type:'seats', rows:7, zone:'LF'},
+      {type:'gap',   label:'中門'},
+      {type:'seats', rows:5, zone:'LB'},
+    ],
+    right: [
+      {type:'gap',   label:'前門', grow:true},
+      {type:'seats', rows:5, zone:'RF'},
+      {type:'gap',   label:'出入口'},
+      {type:'seats', rows:4, zone:'RB'},
+    ],
+  },
+};
+const DEFAULT_LAYOUT = 'v1';
+
+/* 依版型產生座位清單（編號順序：左前→右前→左後→右後） */
+const _seatCache = {};
+function seatsOf(layoutV){
+  if(_seatCache[layoutV]) return _seatCache[layoutV];
+  const L = LAYOUTS[layoutV] || LAYOUTS[DEFAULT_LAYOUT];
+  const zones = [
+    ...L.left.filter(b=>b.type==='seats'),
+    ...L.right.filter(b=>b.type==='seats'),
+  ];
+  const order = zones.map(z=>z.zone); /* 依版型定義順序編號 */
+  const seats=[]; let no=1;
+  order.forEach(z=>{
+    const blk=zones.find(b=>b.zone===z);
+    for(let r=0;r<blk.rows;r++)for(let c=0;c<2;c++)
+      seats.push({id:z+'-'+r+'-'+c, no:no++, zone:z, row:r, col:c});
+  });
+  _seatCache[layoutV]=seats;
+  return seats;
+}
+
+/* ══════════════════ 資料 ══════════════════ */
+const KEY='bustool-v2';
+const SYNCKEY='bustool-sync';
+let DB;   /* {members:[{id,name,note,inactive}], membersUpdatedAt, trips:[...]} */
+
+function nowTs(){ return Date.now(); }
+function newId(p){ return p + nowTs().toString(36) + Math.random().toString(36).slice(2,6); }
+
+function emptyDB(){
+  return {v:2, members:[], membersUpdatedAt:0, trips:[]};
+}
+function newTripObj(name, dateText, copyFrom){
+  const t = {
+    id:newId('t'), name:name||'新的出遊', dateText:dateText||'',
+    layoutV:DEFAULT_LAYOUT, assign:{}, leave:[], boarded:[], rcActive:false,
+    createdAt:nowTs(), updatedAt:nowTs(),
+  };
+  if(copyFrom){
+    const valid = new Set(seatsOf(t.layoutV).map(s=>s.id));
+    Object.keys(copyFrom.assign||{}).forEach(sid=>{
+      if(valid.has(sid)) t.assign[sid]=copyFrom.assign[sid];
+    });
+  }
+  return t;
+}
+function load(){
+  try{ DB = JSON.parse(localStorage.getItem(KEY)) || emptyDB(); }
+  catch(e){ DB = emptyDB(); }
+  if(!DB.trips.length){
+    DB.trips.push(newTripObj('第一次出遊', todayText(), null));
+  }
+}
+function persist(){ localStorage.setItem(KEY, JSON.stringify(DB)); }
+function todayText(){
+  const d=new Date();
+  return (d.getMonth()+1)+' 月 '+d.getDate()+' 日';
+}
+
+/* 目前檢視的行程；最新建立的那個行程才能編輯 */
+let viewId=null;
+function latestTrip(){
+  return DB.trips.slice().sort((a,b)=>b.createdAt-a.createdAt)[0];
+}
+function trip(){ return DB.trips.find(t=>t.id===viewId) || latestTrip(); }
+function editable(){ const t=trip(); return t && t.id===latestTrip().id; }
+function touch(){
+  const t=trip(); if(t) t.updatedAt=nowTs();
+  persist(); schedulePush();
+}
+function touchMembers(){
+  DB.membersUpdatedAt=nowTs();
+  persist(); schedulePush();
+}
+
+let mode='seat';
+let pending=null; /* {kind:'assign',memberId} | {kind:'move',fromSeat} */
+
+/* ══════════════════ 小工具 ══════════════════ */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const memberById=id=>DB.members.find(m=>m.id===id);
+const activeMembers=()=>DB.members.filter(m=>!m.inactive);
+const seatOf=mid=>Object.keys(trip().assign).find(k=>trip().assign[k]===mid);
+const isLeave=mid=>trip().leave.includes(mid);
+function toast(t){
+  const el=$('toast'); el.textContent=t; el.classList.add('show');
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),1800);
+}
+
+/* ══════════════════ 畫面 ══════════════════ */
+function renderHeader(){
+  const t=trip();
+  $('tripName').textContent = t.name + (editable()?'':'（舊行程）');
+  $('tripDate').textContent = t.dateText || '';
+}
+
+function renderBus(){
+  const t=trip();
+  const L=LAYOUTS[t.layoutV]||LAYOUTS[DEFAULT_LAYOUT];
+  const seats=seatsOf(t.layoutV);
+  ['left','right'].forEach(side=>{
+    const col = side==='left'?$('colL'):$('colR');
+    col.innerHTML='';
+    L[side].forEach(blk=>{
+      if(blk.type==='gap'){
+        const d=document.createElement('div');
+        d.className='space'+(blk.grow?' grow':'');
+        d.innerHTML='<span>'+esc(blk.label)+'</span>';
+        col.appendChild(d);
+      }else{
+        for(let r=0;r<blk.rows;r++){
+          const rowEl=document.createElement('div');
+          rowEl.className='seatrow';
+          for(let c=0;c<2;c++){
+            const seat=seats.find(s=>s.zone===blk.zone&&s.row===r&&s.col===c);
+            rowEl.appendChild(seatEl(seat));
+          }
+          col.appendChild(rowEl);
+        }
+      }
+    });
+  });
+}
+
+function seatEl(seat){
+  const t=trip();
+  const mid=t.assign[seat.id];
+  const m=mid?memberById(mid):null;
+  const el=document.createElement('button');
+  el.className='seat';
+  el.innerHTML='<span class="no">'+seat.no+'</span>';
+  if(mid){
+    el.classList.add('occ');
+    el.insertAdjacentText('beforeend', m?m.name:'（已移除）');
+    if(isLeave(mid)){
+      el.classList.add('leave');
+      el.insertAdjacentHTML('beforeend','<span class="tag">請假</span>');
+    }else if(mode==='rc' && t.boarded.includes(seat.id)){
+      el.classList.add('boarded');
+    }
+  }
+  if(pending && pending.kind==='move' && pending.fromSeat===seat.id) el.classList.add('sel');
+  el.onclick=()=>tapSeat(seat);
+  return el;
+}
+
+function renderRoster(){
+  const seated=new Set(Object.values(trip().assign));
+  const un = activeMembers().filter(m=>!seated.has(m.id));
+  let html;
+  if(!DB.members.length){
+    html='<div class="hint">名冊還是空的。<br>請維護者到下方「管理」新增山友名單，或載入示範資料。</div>';
+  }else{
+    html = un.map(m=>{
+      const sel = pending&&pending.kind==='assign'&&pending.memberId===m.id?' sel':'';
+      return '<button class="pbtn'+sel+'" onclick="tapMember(\''+m.id+'\')">'+esc(m.name)+
+        (m.note?'<small>'+esc(m.note)+'</small>':'')+'</button>';
+    }).join('') || '<div class="hint">全部都排好了 ✓</div>';
+  }
+  $('rosterSide').innerHTML = html;
+  $('rosterStrip').innerHTML = (mode==='seat' && editable()) ? html : '';
+  $('asideTitle').textContent = '尚未排座位（'+un.length+' 人）';
+}
+
+function renderStatus(){
+  const sb=$('statusbar');
+  const t=trip();
+  const ro = editable()? '' : '<span class="chip ro">舊行程・只能查看</span>';
+  const seatedIds=Object.values(t.assign);
+  const leaveN=t.leave.length;
+  const goN=seatedIds.filter(mid=>!t.leave.includes(mid)).length;
+  if(mode==='seat'){
+    const seated=new Set(seatedIds);
+    const un=activeMembers().filter(m=>!seated.has(m.id)).length;
+    sb.innerHTML=ro+'<span>點<b>名單上的人</b>，再點<b>空位</b>就完成。點已有人的座位可以換位。</span>'+
+      (un?'<span class="chip">還有 '+un+' 人未排</span>':'<span class="chip ok">全部排好 ✓</span>');
+  }else if(mode==='att'){
+    sb.innerHTML=ro+'<span class="big ok">出席 '+goN+' 人</span><span class="big" style="color:var(--muted)">請假 '+leaveN+' 人</span>'+
+      '<span style="font-size:14px;color:var(--muted)">點座位就能標請假／取消請假</span>';
+  }else{
+    const targets=Object.keys(t.assign).filter(sid=>!t.leave.includes(t.assign[sid]));
+    if(!t.rcActive){
+      sb.innerHTML=ro+'<span>到休息站，按「開始點名」，大家回車時點座位打勾。</span>';
+    }else{
+      const missing=targets.filter(sid=>!t.boarded.includes(sid));
+      if(missing.length===0){
+        sb.innerHTML='<span class="big ok">全員到齊 🎉（'+targets.length+' 人）</span>';
+      }else{
+        sb.innerHTML='<span class="big warn">還差 '+missing.length+' 人</span>'+
+          missing.map(sid=>{
+            const m=memberById(t.assign[sid]);
+            return '<span class="chip miss">'+esc(m?m.name:'?')+'</span>';
+          }).join('');
+      }
+    }
+  }
+}
+
+function renderRcBtn(){
+  const b=$('rcBtn');
+  if(mode!=='rc' || !editable()){ b.style.display='none'; return; }
+  b.style.display='block';
+  if(trip().rcActive){ b.textContent='結束這一輪點名'; b.classList.add('rc-done'); }
+  else{ b.textContent='開始點名'; b.classList.remove('rc-done'); }
+}
+
+function renderPending(){
+  const p=$('pending');
+  if(!pending){ p.classList.remove('show'); return; }
+  p.classList.add('show');
+  const m = pending.kind==='assign' ? memberById(pending.memberId) : memberById(trip().assign[pending.fromSeat]);
+  $('pendingText').textContent = pending.kind==='assign'
+    ? '請點「'+(m?m.name:'')+'」要坐的座位'
+    : '請點「'+(m?m.name:'')+'」要換到的座位';
+}
+
+function renderAll(){
+  renderHeader(); renderBus(); renderRoster(); renderStatus(); renderRcBtn(); renderPending();
+  persist();
+}
+
+/* ══════════════════ 互動 ══════════════════ */
+function setMode(m){
+  mode=m; pending=null;
+  ['seat','att','rc'].forEach(x=>$('tab-'+x).classList.toggle('on',x===m));
+  renderAll();
+}
+function tapMember(mid){
+  if(mode!=='seat' || !editable()) return;
+  pending = (pending&&pending.kind==='assign'&&pending.memberId===mid) ? null : {kind:'assign',memberId:mid};
+  renderAll();
+}
+function cancelPending(){ pending=null; renderAll(); }
+
+function tapSeat(seat){
+  const t=trip();
+  const mid=t.assign[seat.id];
+
+  if(!editable()){
+    if(mid){
+      const m=memberById(mid);
+      toast(seat.no+' 號：'+(m?m.name:'（已移除）')+(t.leave.includes(mid)?'（當時請假）':''));
+    }
+    return;
+  }
+
+  if(pending){
+    if(pending.kind==='assign'){
+      if(!mid){
+        t.assign[seat.id]=pending.memberId;
+        toast(memberById(pending.memberId).name+' → '+seat.no+' 號');
+        pending=null; touch(); renderAll();
+      }else{
+        const newP=memberById(pending.memberId), cur=memberById(mid);
+        openActs(seat.no+' 號已有 '+(cur?cur.name:''),
+          '要讓 <b>'+esc(newP.name)+'</b> 坐這裡嗎？'+esc(cur?cur.name:'')+' 會變成沒有座位。',[
+          {t:'換成 '+newP.name+' 坐', cls:'primary', fn:()=>{
+            t.assign[seat.id]=pending.memberId; pending=null; closeSheet(); touch(); renderAll();
+          }},
+        ]);
+      }
+    }else if(pending.kind==='move'){
+      if(seat.id===pending.fromSeat){ pending=null; renderAll(); return; }
+      const from=pending.fromSeat;
+      const a=t.assign[from], b=t.assign[seat.id];
+      t.assign[seat.id]=a;
+      if(b) t.assign[from]=b; else delete t.assign[from];
+      toast(b?'兩人互換完成':'換位完成');
+      pending=null; touch(); renderAll();
+    }
+    return;
+  }
+
+  if(mode==='rc'){
+    if(!mid) return;
+    if(t.leave.includes(mid)){ const m=memberById(mid); toast((m?m.name:'')+' 今天請假'); return; }
+    if(!t.rcActive){ toast('先按上面的「開始點名」'); return; }
+    const i=t.boarded.indexOf(seat.id);
+    if(i>=0) t.boarded.splice(i,1); else t.boarded.push(seat.id);
+    touch(); renderAll();
+    return;
+  }
+
+  if(mode==='att'){
+    if(!mid) return;
+    const m=memberById(mid);
+    const i=t.leave.indexOf(mid);
+    if(i>=0){ t.leave.splice(i,1); toast((m?m.name:'')+' 取消請假，會出席'); }
+    else{ t.leave.push(mid); toast((m?m.name:'')+' 標記請假'); }
+    touch(); renderAll();
+    return;
+  }
+
+  /* 排座位模式：點已有人的座位 */
+  if(!mid) return;
+  const m=memberById(mid);
+  openActs(seat.no+' 號・'+(m?m.name:'（已移除）'),
+    m&&m.note?('備註：<b>'+esc(m.note)+'</b>'):'（沒有備註）',[
+    {t:'換位（再點一個座位）', cls:'primary', fn:()=>{ pending={kind:'move',fromSeat:seat.id}; closeSheet(); renderAll(); }},
+    {t:isLeave(mid)?'取消請假':'標記請假', fn:()=>{
+      const i=t.leave.indexOf(mid);
+      if(i>=0)t.leave.splice(i,1); else t.leave.push(mid);
+      closeSheet(); touch(); renderAll();
+    }},
+    {t:'編輯備註', fn:()=>{ if(m) openNoteEditor(m); }},
+    {t:'移出座位（回到未排名單）', cls:'danger', fn:()=>{
+      delete t.assign[seat.id]; closeSheet(); touch(); renderAll();
+      toast((m?m.name:'')+' 回到未排名單');
+    }},
+  ]);
+}
+
+function toggleRollcall(){
+  const t=trip();
+  if(!t.rcActive){ t.rcActive=true; t.boarded=[]; toast('開始點名，大家回車時點座位'); }
+  else{ t.rcActive=false; t.boarded=[]; }
+  touch(); renderAll();
+}
+
+/* ══════════════════ 彈出視窗 ══════════════════ */
+function sheetHTML(html){
+  $('sheet').innerHTML=html;
+  $('overlay').classList.add('show');
+}
+function closeSheet(){ $('overlay').classList.remove('show'); }
+let _acts=[];
+function openActs(title, note, acts){
+  _acts=acts;
+  sheetHTML('<h2>'+esc(title)+'</h2><div class="note">'+note+'</div>'+
+    '<div class="acts">'+acts.map((a,i)=>'<button class="act '+(a.cls||'')+'" onclick="_acts['+i+'].fn()">'+esc(a.t)+'</button>').join('')+
+    '<button class="act cancel" onclick="closeSheet()">取消</button></div>');
+}
+
+/* 備註編輯（支援 iOS 語音輸入） */
+function openNoteEditor(m){
+  sheetHTML('<h2>'+esc(m.name)+' 的備註</h2>'+
+    '<div class="note">可以按鍵盤上的麥克風，用說的輸入。</div>'+
+    '<div class="field"><textarea id="noteTa">'+esc(m.note||'')+'</textarea></div>'+
+    '<div class="acts">'+
+      '<button class="act primary" onclick="saveNote(\''+m.id+'\')">儲存備註</button>'+
+      '<button class="act cancel" onclick="closeSheet()">取消</button></div>');
+  setTimeout(()=>$('noteTa').focus(),100);
+}
+function saveNote(mid){
+  const m=memberById(mid); if(!m) return;
+  m.note=$('noteTa').value.trim();
+  touchMembers(); closeSheet(); renderAll(); toast('備註已儲存');
+}
+
+/* ══════════════════ 行程管理 ══════════════════ */
+function openTrips(){
+  const latest=latestTrip();
+  const rows=DB.trips.slice().sort((a,b)=>b.createdAt-a.createdAt).map(t=>{
+    const cur=t.id===latest.id;
+    return '<div class="listrow"><div class="grow"><div class="nm">'+esc(t.name)+
+      (cur?'<span style="color:var(--green);font-size:13px">　目前行程</span>':'')+
+      '<small>'+esc(t.dateText||'')+(cur?'':'　（只能查看）')+'</small></div></div>'+
+      '<button class="mini" onclick="viewTrip(\''+t.id+'\')">打開</button></div>';
+  }).join('');
+  sheetHTML('<h2>行程</h2><div class="note">新的出遊按下面的綠色按鈕。舊行程可以打開回看，但不能修改。</div>'+
+    rows+
+    '<div class="acts" style="margin-top:14px">'+
+      '<button class="act primary" onclick="openNewTrip()">＋ 新增下次出遊</button>'+
+      '<button class="act cancel" onclick="closeSheet()">關閉</button></div>');
+}
+function viewTrip(id){ viewId=id; pending=null; closeSheet(); renderAll(); }
+function openNewTrip(){
+  sheetHTML('<h2>新增下次出遊</h2>'+
+    '<div class="note">座位會自動照上一次的安排，之後再微調就好。</div>'+
+    '<div class="field"><label>出遊名稱（可以用說的）</label><input id="ntName" placeholder="例如：加里山"></div>'+
+    '<div class="field"><label>日期</label><input id="ntDate" placeholder="例如：8 月 2 日" value="'+esc(todayText())+'"></div>'+
+    '<div class="acts">'+
+      '<button class="act primary" onclick="createTrip()">建立行程</button>'+
+      '<button class="act cancel" onclick="openTrips()">返回</button></div>');
+  setTimeout(()=>$('ntName').focus(),100);
+}
+function createTrip(){
+  const name=$('ntName').value.trim()||'新的出遊';
+  const date=$('ntDate').value.trim();
+  const t=newTripObj(name, date, latestTrip());
+  DB.trips.push(t);
+  viewId=t.id;
+  touch(); closeSheet(); setMode('seat');
+  toast('已建立「'+name+'」，座位照上次安排');
+}
+
+/* ══════════════════ 管理（維護者） ══════════════════ */
+function openAdmin(){
+  sheetHTML('<h2>管理</h2><div class="note">這一頁給系統維護者使用。</div>'+
+    '<div class="acts">'+
+      '<button class="act" onclick="openMembers()">名冊管理（'+DB.members.length+' 人）</button>'+
+      '<button class="act" onclick="openSync()">雲端同步設定</button>'+
+      '<button class="act" onclick="exportBackup()">匯出備份檔</button>'+
+      '<button class="act" onclick="openImport()">匯入備份檔</button>'+
+      (DB.members.length?'':'<button class="act" onclick="loadDemo()">載入示範資料（42 位山友）</button>')+
+      '<button class="act cancel" onclick="closeSheet()">關閉</button></div>');
+}
+
+function openMembers(){
+  const rows=DB.members.map(m=>
+    '<div class="listrow"><div class="grow"><div class="nm">'+esc(m.name)+
+    (m.inactive?'<span style="color:var(--muted);font-size:13px">　（停用）</span>':'')+
+    (m.note?'<small>'+esc(m.note)+'</small>':'')+'</div></div>'+
+    '<button class="mini" onclick="editMember(\''+m.id+'\')">編輯</button>'+
+    '<button class="mini off" onclick="toggleMember(\''+m.id+'\')">'+(m.inactive?'啟用':'停用')+'</button>'+
+    '</div>').join('') || '<div class="hint">還沒有任何人，先在下面新增。</div>';
+  sheetHTML('<h2>名冊管理</h2>'+
+    '<div class="note">「停用」不會刪除資料，只是不再出現在名單上；舊行程的紀錄都會保留。</div>'+
+    '<div class="field"><div class="row2">'+
+      '<input id="nmNew" placeholder="輸入姓名" style="flex:1;padding:12px;font-size:18px;border:1.5px solid var(--line);border-radius:10px">'+
+      '<button class="act primary" style="flex:none;width:auto;padding:12px 18px" onclick="addMember()">新增</button>'+
+    '</div></div>'+rows+
+    '<div class="acts" style="margin-top:14px"><button class="act cancel" onclick="openAdmin()">返回管理</button></div>');
+}
+function addMember(){
+  const name=$('nmNew').value.trim();
+  if(!name){ toast('請先輸入姓名'); return; }
+  DB.members.push({id:newId('m'), name, note:'', inactive:false});
+  touchMembers(); openMembers(); toast('已新增 '+name);
+}
+function toggleMember(mid){
+  const m=memberById(mid); if(!m) return;
+  m.inactive=!m.inactive;
+  touchMembers(); openMembers();
+}
+function editMember(mid){
+  const m=memberById(mid); if(!m) return;
+  sheetHTML('<h2>編輯：'+esc(m.name)+'</h2>'+
+    '<div class="field"><label>姓名</label><input id="emName" value="'+esc(m.name)+'"></div>'+
+    '<div class="field"><label>備註</label><textarea id="emNote">'+esc(m.note||'')+'</textarea></div>'+
+    '<div class="acts">'+
+      '<button class="act primary" onclick="saveMember(\''+m.id+'\')">儲存</button>'+
+      '<button class="act cancel" onclick="openMembers()">返回</button></div>');
+}
+function saveMember(mid){
+  const m=memberById(mid); if(!m) return;
+  const name=$('emName').value.trim();
+  if(!name){ toast('姓名不能是空的'); return; }
+  m.name=name; m.note=$('emNote').value.trim();
+  touchMembers(); openMembers(); toast('已儲存');
+}
+
+function loadDemo(){
+  const names=[
+    ['陳金水','會暈車，需坐前排'],['林美惠','與王榮發夫妻，要坐一起'],['王榮發',''],
+    ['張淑芬',''],['李坤山','重聽，講話要大聲'],['黃玉蘭','膝蓋不好，想靠走道'],
+    ['吳進財',''],['劉阿香',''],['蔡文雄',''],['許秀英','吃素'],
+    ['鄭春木',''],['謝麗華',''],['洪天賜',''],['郭素梅',''],
+    ['曾國安',''],['賴金鳳','和郭素梅是鄰居，喜歡坐附近'],['周添丁',''],['徐雅雲',''],
+    ['江海樹',''],['呂桂花',''],['蕭正義',''],['葉春嬌',''],
+    ['程志明',''],['簡月娥',''],['鍾德旺',''],['游淑貞',''],
+    ['彭火旺',''],['廖秀琴',''],['白長壽','常遲到，休息站要多留意'],['康玉霞',''],
+    ['方振宗',''],['翁彩雲',''],['石大山',''],['龔美玉',''],
+    ['卓明輝',''],['殷秋菊',''],['柯萬得',''],['饒素芬',''],
+    ['湯金龍',''],['雷麗珍',''],['傅山河',''],['駱惠美',''],
+  ];
+  names.forEach(n=>DB.members.push({id:newId('m'), name:n[0], note:n[1], inactive:false}));
+  touchMembers(); closeSheet(); renderAll(); toast('已載入 42 位示範山友');
+}
+
+/* 備份 */
+function exportBackup(){
+  const d=new Date();
+  const fn='座位系統備份-'+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'.json';
+  const blob=new Blob([JSON.stringify(DB,null,1)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=fn; a.click();
+  toast('已下載備份檔');
+}
+function openImport(){
+  sheetHTML('<h2>匯入備份檔</h2>'+
+    '<div class="note"><b>注意：</b>匯入會用備份檔的內容覆蓋這台裝置目前的資料。建議先按「匯出備份檔」留一份現況。</div>'+
+    '<div class="field"><input type="file" id="impFile" accept=".json"></div>'+
+    '<div class="acts">'+
+      '<button class="act danger" onclick="doImport()">確定匯入並覆蓋</button>'+
+      '<button class="act cancel" onclick="openAdmin()">返回</button></div>');
+}
+function doImport(){
+  const f=$('impFile').files[0];
+  if(!f){ toast('請先選擇備份檔'); return; }
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const d=JSON.parse(rd.result);
+      if(!d.trips || !d.members) throw 0;
+      DB=d; viewId=latestTrip().id;
+      persist(); schedulePush(); closeSheet(); renderAll(); toast('匯入完成');
+    }catch(e){ toast('這個檔案不是有效的備份檔'); }
+  };
+  rd.readAsText(f);
+}
+
+/* ══════════════════ 雲端同步（Supabase） ══════════════════ */
+let SYNC=null;
+try{ SYNC=JSON.parse(localStorage.getItem(SYNCKEY)||'null'); }catch(e){}
+let _pushTimer=null, _pulling=false;
+
+function syncUI(state,text){
+  const d=$('syncdot');
+  d.className='syncdot '+(state||'');
+  $('syncText').textContent=text;
+}
+function syncReady(){ return SYNC && SYNC.url && SYNC.key && SYNC.token; }
+
+function openSync(){
+  const s=SYNC||{url:'',key:'',token:''};
+  sheetHTML('<h2>雲端同步設定</h2>'+
+    '<div class="note">填好三個欄位後，iPad 和 iPhone 就會共用同一份資料。設定方式見 README 說明檔。這些金鑰只存在這台裝置上。</div>'+
+    '<div class="field"><label>Supabase 專案網址</label><input id="syUrl" placeholder="https://xxxx.supabase.co" value="'+esc(s.url)+'"></div>'+
+    '<div class="field"><label>API 金鑰（anon key）</label><input id="syKey" value="'+esc(s.key)+'"></div>'+
+    '<div class="field"><label>家庭代碼（自己取一長串，兩台裝置要一樣）</label><input id="syTok" value="'+esc(s.token)+'"></div>'+
+    '<div class="acts">'+
+      '<button class="act primary" onclick="saveSync()">儲存並測試連線</button>'+
+      (syncReady()?'<button class="act" onclick="stopSync()">停用同步（只清除這台的設定）</button>':'')+
+      '<button class="act cancel" onclick="openAdmin()">返回</button></div>');
+}
+function saveSync(){
+  SYNC={url:$('syUrl').value.trim().replace(/\/+$/,''), key:$('syKey').value.trim(), token:$('syTok').value.trim()};
+  if(!syncReady()){ toast('三個欄位都要填'); return; }
+  localStorage.setItem(SYNCKEY, JSON.stringify(SYNC));
+  closeSheet();
+  pull(true);
+}
+function stopSync(){
+  localStorage.removeItem(SYNCKEY); SYNC=null;
+  syncUI('','尚未設定同步'); closeSheet(); toast('已停用這台裝置的同步');
+}
+
+function sbHeaders(){
+  return {'apikey':SYNC.key,'Authorization':'Bearer '+SYNC.key,'Content-Type':'application/json'};
+}
+async function pull(showResult){
+  if(!syncReady() || _pulling) return;
+  _pulling=true;
+  syncUI('busy','同步中…');
+  try{
+    const r=await fetch(SYNC.url+'/rest/v1/bus_state?id=eq.'+encodeURIComponent(SYNC.token)+'&select=data',
+      {headers:sbHeaders()});
+    if(!r.ok) throw new Error(r.status);
+    const rows=await r.json();
+    if(rows.length) mergeRemote(rows[0].data);
+    await push(); /* 合併後把最新結果送回雲端 */
+    persist();
+    if(!viewId || !DB.trips.find(t=>t.id===viewId)) viewId=latestTrip().id;
+    renderAll();
+    syncUI('ok','已同步 '+new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}));
+    if(showResult) toast('同步成功');
+  }catch(e){
+    syncUI(navigator.onLine?'err':'','網路'+(navigator.onLine?'同步失敗':'離線，資料存在本機'));
+    if(showResult) toast('連不上雲端，請檢查設定或網路');
+  }
+  _pulling=false;
+}
+async function push(){
+  if(!syncReady()) return;
+  const body=JSON.stringify([{id:SYNC.token, data:DB, updated_at:new Date().toISOString()}]);
+  const r=await fetch(SYNC.url+'/rest/v1/bus_state',
+    {method:'POST', headers:{...sbHeaders(),'Prefer':'resolution=merge-duplicates'}, body});
+  if(!r.ok) throw new Error(r.status);
+}
+function schedulePush(){
+  if(!syncReady()) return;
+  clearTimeout(_pushTimer);
+  syncUI('busy','同步中…');
+  _pushTimer=setTimeout(async ()=>{
+    try{
+      await push();
+      syncUI('ok','已同步 '+new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}));
+    }catch(e){
+      syncUI(navigator.onLine?'err':'', navigator.onLine?'同步失敗':'離線，資料存在本機');
+    }
+  },1500);
+}
+function mergeRemote(r){
+  if(!r) return;
+  if((r.membersUpdatedAt||0) > (DB.membersUpdatedAt||0)){
+    DB.members=r.members||[]; DB.membersUpdatedAt=r.membersUpdatedAt||0;
+  }
+  (r.trips||[]).forEach(rt=>{
+    const lt=DB.trips.find(t=>t.id===rt.id);
+    if(!lt) DB.trips.push(rt);
+    else if((rt.updatedAt||0)>(lt.updatedAt||0)) Object.assign(lt, rt);
+  });
+}
+/* 回到 App、恢復連線、定時：都拉一次 */
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) pull(); });
+window.addEventListener('online',()=>pull());
+window.addEventListener('offline',()=>syncUI('','離線，資料存在本機'));
+setInterval(()=>{ if(!document.hidden) pull(); }, 45000);
+
+/* ══════════════════ 傳到 LINE ══════════════════ */
+async function shareChart(){
+  const t=trip();
+  const L=LAYOUTS[t.layoutV]||LAYOUTS[DEFAULT_LAYOUT];
+  const seats=seatsOf(t.layoutV);
+  const SW=88, SH=52, GAP=8, AISLE=56, PAD=36, HEAD=110;
+  function colH(side){
+    let h=0;
+    L[side].forEach(b=>{ h += b.type==='seats' ? b.rows*(SH+GAP) : (b.grow?0:40+GAP); });
+    return h;
+  }
+  const leftH=Math.max(colH('left'), colH('right'));
+  const W=PAD*2+SW*4+GAP*2+AISLE, H=HEAD+leftH+PAD+30;
+  const cv=document.createElement('canvas');
+  const scale=2; cv.width=W*scale; cv.height=H*scale;
+  const ctx=cv.getContext('2d'); ctx.scale(scale,scale);
+  ctx.fillStyle='#FFFFFF'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#26323F'; ctx.textAlign='center';
+  ctx.font='700 24px "PingFang TC",sans-serif';
+  ctx.fillText(t.name+'　座位表', W/2, 40);
+  const leaveN=t.leave.length;
+  const goN=Object.values(t.assign).filter(mid=>!t.leave.includes(mid)).length;
+  ctx.font='400 16px "PingFang TC",sans-serif'; ctx.fillStyle='#7A8683';
+  ctx.fillText((t.dateText?t.dateText+'　':'')+'出席 '+goN+' 人・請假 '+leaveN+' 人　↑ 車頭', W/2, 68);
+
+  function roundRect(c,x,y,w,h,r){
+    c.beginPath();
+    c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r);
+    c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath();
+    c.fill(); c.stroke();
+  }
+  function drawCol(side, x0){
+    let y=HEAD;
+    const diff=leftH-colH(side);
+    L[side].forEach(b=>{
+      if(b.type==='gap'){
+        const gh=b.grow?diff:40;
+        ctx.fillStyle='#ADB6B1'; ctx.font='400 13px "PingFang TC",sans-serif'; ctx.textAlign='center';
+        ctx.fillText(b.label, x0+SW+GAP/2, y+gh/2+4);
+        y+=gh+GAP;
+      }else{
+        for(let r=0;r<b.rows;r++){
+          for(let c=0;c<2;c++){
+            const seat=seats.find(s=>s.zone===b.zone&&s.row===r&&s.col===c);
+            const x=x0+c*(SW+GAP);
+            const mid=t.assign[seat.id];
+            const onLeave=mid&&t.leave.includes(mid);
+            ctx.fillStyle=onLeave?'#E3E5E2':(mid?'#F4F8F5':'#FFFFFF');
+            ctx.strokeStyle=mid?'#9DB3A6':'#C7CEC9'; ctx.lineWidth=1.5;
+            roundRect(ctx,x,y,SW,SH,8);
+            ctx.fillStyle='#ADB6B1'; ctx.font='400 10px sans-serif'; ctx.textAlign='left';
+            ctx.fillText(seat.no, x+5, y+13);
+            ctx.textAlign='center';
+            if(mid){
+              const m=memberById(mid);
+              ctx.fillStyle=onLeave?'#98A09B':'#26323F';
+              ctx.font='700 16px "PingFang TC",sans-serif';
+              ctx.fillText(m?m.name:'？', x+SW/2, y+SH/2+6);
+              if(onLeave){ ctx.font='400 11px sans-serif'; ctx.fillText('請假', x+SW/2, y+SH-6); }
+            }
+          }
+          y+=SH+GAP;
+        }
+      }
+    });
+  }
+  drawCol('left', PAD);
+  drawCol('right', PAD+SW*2+GAP+AISLE);
+
+  cv.toBlob(async blob=>{
+    const file=new File([blob],'座位表.png',{type:'image/png'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      try{ await navigator.share({files:[file], title:'座位表'}); }catch(e){}
+    }else{
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob); a.download='座位表.png'; a.click();
+      toast('已下載座位表圖片');
+    }
+  },'image/png');
+}
+
+/* ══════════════════ 啟動 ══════════════════ */
+load();
+viewId=latestTrip().id;
+renderAll();
+if(syncReady()) pull(); else syncUI('','尚未設定同步');
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
