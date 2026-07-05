@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#2E6B4E">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>山友團座位表</title>
+<title>山友團座位表 v5.0</title>
 <style>
   :root{
     --green:#2E6B4E; --green-dk:#24523C; --green-lt:#DFF0E2;
@@ -55,7 +55,10 @@
   .statusbar{
     padding:10px 16px;font-size:16px;background:#FBFCFA;border-bottom:1px solid var(--line);
     display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:48px;
+    transition:background-color .2s,border-color .2s;
   }
+  .statusbar.rc-warn{background:#FFF0F0;border-bottom:2px solid #D98A82}
+  .statusbar.rc-ok{background:#EFF9F1;border-bottom:2px solid #8BCB98}
   .statusbar .big{font-size:20px;font-weight:800}
   .statusbar .warn{color:var(--red)}
   .statusbar .ok{color:var(--green)}
@@ -63,6 +66,8 @@
     display:inline-block;background:#fff;border:1.5px solid var(--line);
     border-radius:999px;padding:5px 12px;font-size:15px;font-weight:600;
   }
+  button.chip{font-family:inherit;color:inherit;cursor:pointer}
+  .chip.call{border-color:#9DB3A6;color:var(--green-dk)}
   .chip.miss{border-color:var(--red);color:var(--red)}
   .chip.ro{background:#FFF3E8;border-color:#E5B98F;color:#9A5B1F}
 
@@ -80,6 +85,23 @@
   .bus{
     background:var(--card);border:2.5px solid var(--ink);border-radius:26px 26px 16px 16px;
     padding:10px 12px 14px;max-width:430px;margin:0 auto;
+    position:relative;transition:border-color .2s, box-shadow .2s, background-color .2s;
+  }
+  .bus.rc-missing{
+    border:5px solid var(--red);
+    box-shadow:0 0 0 5px rgba(192,57,43,.14), 0 0 18px rgba(192,57,43,.22);
+    animation:rcPulseRed 1.25s ease-in-out infinite;
+  }
+  .bus.rc-complete{
+    border:5px solid var(--green);
+    box-shadow:0 0 0 5px rgba(46,107,78,.14), 0 0 18px rgba(46,107,78,.22);
+    background:#FBFFFC;
+  }
+  .bus.rc-missing .bus-head{color:var(--red);border-bottom-color:#E4B0AA}
+  .bus.rc-complete .bus-head{color:var(--green);border-bottom-color:#A8D8B4}
+  @keyframes rcPulseRed{
+    0%,100%{box-shadow:0 0 0 5px rgba(192,57,43,.12), 0 0 16px rgba(192,57,43,.20)}
+    50%{box-shadow:0 0 0 8px rgba(192,57,43,.22), 0 0 26px rgba(192,57,43,.36)}
   }
   .bus-head{
     text-align:center;font-size:14px;color:var(--muted);font-weight:700;
@@ -123,6 +145,68 @@
   }
   .pbtn small{display:block;font-size:13px;font-weight:400;color:var(--muted);margin-top:2px}
   .pbtn.sel{border-color:var(--amber);background:#FFF7DF}
+  .pbtn.leave{background:#F1F2F0;border-color:#C9CEC9;color:#98A09B;box-shadow:none}
+  .pbtn.leave .state{color:var(--red);font-weight:800}
+  .barbtn{
+    background:#fff;border:1.5px solid var(--line);border-radius:999px;
+    padding:6px 12px;font-size:15px;font-weight:700;color:var(--ink);
+  }
+  .barbtn.danger{border-color:#E4C4BF;color:var(--red)}
+  .barbtn.primary{border-color:var(--green);color:var(--green)}
+
+  /* ── 旅客群組色：最多 10 組，排座位時用來辨識夫妻／同行小隊 ── */
+  .g1{--g:#D96B6B;--gbg:#FFF1F1}
+  .g2{--g:#D98B3A;--gbg:#FFF4E8}
+  .g3{--g:#C6A022;--gbg:#FFF8D9}
+  .g4{--g:#5FA864;--gbg:#ECF8ED}
+  .g5{--g:#2F9A8E;--gbg:#E9F7F5}
+  .g6{--g:#4C8EDB;--gbg:#EEF6FF}
+  .g7{--g:#6D79D8;--gbg:#F0F1FF}
+  .g8{--g:#9A6AD8;--gbg:#F6F0FF}
+  .g9{--g:#C767A8;--gbg:#FFF0F8}
+  .g10{--g:#8A7B68;--gbg:#F3F0EB}
+  .seat.g1,.seat.g2,.seat.g3,.seat.g4,.seat.g5,.seat.g6,.seat.g7,.seat.g8,.seat.g9,.seat.g10,
+  .pbtn.g1,.pbtn.g2,.pbtn.g3,.pbtn.g4,.pbtn.g5,.pbtn.g6,.pbtn.g7,.pbtn.g8,.pbtn.g9,.pbtn.g10{
+    border-color:var(--g);background:var(--gbg);
+    box-shadow:inset 0 -5px 0 var(--g);
+  }
+  .seat.boarded.g1,.seat.boarded.g2,.seat.boarded.g3,.seat.boarded.g4,.seat.boarded.g5,.seat.boarded.g6,.seat.boarded.g7,.seat.boarded.g8,.seat.boarded.g9,.seat.boarded.g10{
+    background:var(--green-lt);box-shadow:inset 0 -5px 0 var(--g);
+  }
+  .seat.leave.g1,.seat.leave.g2,.seat.leave.g3,.seat.leave.g4,.seat.leave.g5,.seat.leave.g6,.seat.leave.g7,.seat.leave.g8,.seat.leave.g9,.seat.leave.g10{
+    background:var(--leave);box-shadow:inset 0 -5px 0 var(--g);
+  }
+  .grp{
+    position:absolute;bottom:2px;left:5px;font-size:10px;font-weight:900;
+    color:#fff;background:var(--g,var(--muted));border-radius:999px;min-width:16px;height:16px;
+    display:inline-flex;align-items:center;justify-content:center;padding:0 4px;
+  }
+  .note-badge{
+    position:absolute;top:2px;right:5px;font-size:10px;font-weight:900;
+    color:#7A4B00;background:#FFE39B;border:1px solid #D6A437;border-radius:999px;
+    min-width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;
+  }
+  .seat.boarded .note-badge{right:20px}
+  .seat.leave .note-badge{color:#8A6A20;background:#F1E0A8;border-color:#C6A45A}
+  .pbtn .grp{position:static;margin-right:6px;vertical-align:middle}
+  .group-label{
+    display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:800;
+    color:#fff;background:var(--g,var(--muted));border-radius:999px;padding:2px 8px;margin-right:6px;
+  }
+  .group-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:6px}
+  .group-chip{
+    border:1.5px solid var(--line);border-radius:12px;padding:9px 10px;background:#fff;
+    font-size:15px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:7px;text-align:left;
+  }
+  .group-chip i{width:16px;height:16px;border-radius:50%;background:var(--g,var(--muted));display:inline-block;flex:none}
+  .group-chip.on{border-color:var(--g,var(--green));background:var(--gbg,#fff);box-shadow:inset 0 -4px 0 var(--g,var(--green))}
+  .group-chip.none.on{border-color:var(--green);box-shadow:none}
+  .group-name-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .group-name-row i{width:18px;height:18px;border-radius:50%;background:var(--g,var(--muted));display:inline-block;flex:none}
+  .pref-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:6px}
+  .pref-chip{border:1.5px solid var(--line);border-radius:12px;padding:9px 8px;background:#fff;font-size:15px;font-weight:800;color:var(--ink);text-align:center}
+  .pref-chip.on{border-color:var(--green);background:var(--green-lt);color:var(--green-dk);box-shadow:inset 0 -4px 0 var(--green)}
+  .pref-label{display:inline-flex;align-items:center;font-size:12px;font-weight:800;color:var(--green-dk);background:var(--green-lt);border:1px solid #BBD8C3;border-radius:999px;padding:2px 8px;margin-right:6px}
   .hint{color:var(--muted);font-size:15px;line-height:1.6}
 
   .roster-strip{display:flex;gap:8px;overflow-x:auto;padding:0 2px 10px;-webkit-overflow-scrolling:touch}
@@ -234,7 +318,7 @@
   <div class="chart-wrap">
     <div class="roster-strip" id="rosterStrip"></div>
     <button class="rc-start" id="rcBtn" style="display:none" onclick="toggleRollcall()">開始點名</button>
-    <div class="bus">
+    <div class="bus" id="busBox">
       <div class="bus-head">車　頭</div>
       <div class="cabin">
         <div class="col" id="colL"></div>
@@ -307,13 +391,13 @@ function seatsOf(layoutV){
 /* ══════════════════ 資料 ══════════════════ */
 const KEY='bustool-v2';
 const SYNCKEY='bustool-sync';
-let DB;   /* {members:[{id,name,note,inactive}], membersUpdatedAt, trips:[...]} */
+let DB;   /* {members:[{id,name,phone,group,seatPref,note,inactive}], groupNames, membersUpdatedAt, trips:[...]} */
 
 function nowTs(){ return Date.now(); }
 function newId(p){ return p + nowTs().toString(36) + Math.random().toString(36).slice(2,6); }
 
 function emptyDB(){
-  return {v:2, members:[], membersUpdatedAt:0, trips:[]};
+  return {v:5, members:[], groupNames:{}, membersUpdatedAt:0, trips:[]};
 }
 function newTripObj(name, dateText, copyFrom){
   const t = {
@@ -332,6 +416,9 @@ function newTripObj(name, dateText, copyFrom){
 function load(){
   try{ DB = JSON.parse(localStorage.getItem(KEY)) || emptyDB(); }
   catch(e){ DB = emptyDB(); }
+  DB.v = 5;
+  DB.groupNames = {...defaultGroupNames(), ...(DB.groupNames||{})};
+  DB.members = (DB.members||[]).map(normalizeMember);
   if(!DB.trips.length){
     DB.trips.push(newTripObj('第一次出遊', todayText(), null));
   }
@@ -360,6 +447,27 @@ function touchMembers(){
 
 let mode='seat';
 let pending=null; /* {kind:'assign',memberId} | {kind:'move',fromSeat} */
+let undoState=null; /* 只保留目前行程上一個操作，用於現場快速復原 */
+
+const GROUPS = [
+  {id:'1', name:'群組 1', cls:'g1', color:'#D96B6B', fill:'#FFF1F1'},
+  {id:'2', name:'群組 2', cls:'g2', color:'#D98B3A', fill:'#FFF4E8'},
+  {id:'3', name:'群組 3', cls:'g3', color:'#C6A022', fill:'#FFF8D9'},
+  {id:'4', name:'群組 4', cls:'g4', color:'#5FA864', fill:'#ECF8ED'},
+  {id:'5', name:'群組 5', cls:'g5', color:'#2F9A8E', fill:'#E9F7F5'},
+  {id:'6', name:'群組 6', cls:'g6', color:'#4C8EDB', fill:'#EEF6FF'},
+  {id:'7', name:'群組 7', cls:'g7', color:'#6D79D8', fill:'#F0F1FF'},
+  {id:'8', name:'群組 8', cls:'g8', color:'#9A6AD8', fill:'#F6F0FF'},
+  {id:'9', name:'群組 9', cls:'g9', color:'#C767A8', fill:'#FFF0F8'},
+  {id:'10', name:'群組 10', cls:'g10', color:'#8A7B68', fill:'#F3F0EB'},
+];
+const SEAT_PREFS = [
+  {id:'', name:'無偏好', csv:'無偏好'},
+  {id:'aisle', name:'走道', csv:'走道優先'},
+  {id:'window', name:'靠窗', csv:'靠窗優先'},
+  {id:'front', name:'前排', csv:'前排優先'},
+  {id:'rear', name:'後排', csv:'後排優先'},
+];
 
 /* ══════════════════ 小工具 ══════════════════ */
 const $=id=>document.getElementById(id);
@@ -368,9 +476,152 @@ const memberById=id=>DB.members.find(m=>m.id===id);
 const activeMembers=()=>DB.members.filter(m=>!m.inactive);
 const seatOf=mid=>Object.keys(trip().assign).find(k=>trip().assign[k]===mid);
 const isLeave=mid=>trip().leave.includes(mid);
+const rcTargets=t=>Object.keys(t.assign||{}).filter(sid=>!t.leave.includes(t.assign[sid]));
+const rcMissing=t=>rcTargets(t).filter(sid=>!(t.boarded||[]).includes(sid));
+const rcComplete=t=>!!(t.rcActive && rcTargets(t).length && rcMissing(t).length===0);
+const cleanPhone=p=>String(p||'').trim();
+function defaultGroupNames(){
+  const o={}; GROUPS.forEach(g=>o[g.id]=g.name); return o;
+}
+function groupName(id){
+  const g=GROUPS.find(x=>x.id===String(id));
+  return g ? ((DB&&DB.groupNames&&DB.groupNames[g.id]) || g.name) : '';
+}
+function validGroup(g){
+  const raw=String(g||'').trim();
+  const n=raw.replace(/^群組\s*/,'').trim();
+  if(GROUPS.some(x=>x.id===n)) return n;
+  const hit=GROUPS.find(x=>groupName(x.id)===raw || x.name===raw);
+  return hit ? hit.id : '';
+}
+function groupInfo(g){
+  const id=validGroup(g);
+  const base=GROUPS.find(x=>x.id===id);
+  return base ? {...base, name:groupName(base.id)} : null;
+}
+function groupClassName(m){ const g=groupInfo(m&&m.group); return g ? g.cls : ''; }
+function groupLabel(m){ const g=groupInfo(m&&m.group); return g ? g.name : ''; }
+function groupBadge(m){ const g=groupInfo(m&&m.group); return g ? '<span class="grp">'+esc(g.id)+'</span>' : ''; }
+function hasMemberNote(m){ return !!String((m&&m.note)||'').trim(); }
+function noteBadge(m){ return hasMemberNote(m) ? '<span class="note-badge" title="有備註">備</span>' : ''; }
+function validSeatPref(v){
+  const raw=String(v||'').trim();
+  if(!raw || raw==='無偏好') return '';
+  const map={'走道':'aisle','走道優先':'aisle','aisle':'aisle','靠走道':'aisle','靠窗':'window','靠窗優先':'window','window':'window','窗邊':'window','前排':'front','前排優先':'front','front':'front','坐前面':'front','後排':'rear','後排優先':'rear','rear':'rear','坐後面':'rear'};
+  return map[raw] || '';
+}
+function seatPrefName(v){
+  const id=validSeatPref(v);
+  const p=SEAT_PREFS.find(x=>x.id===id);
+  return p ? p.name : '無偏好';
+}
+function seatPrefCsv(v){
+  const id=validSeatPref(v);
+  const p=SEAT_PREFS.find(x=>x.id===id);
+  return p ? p.csv : '無偏好';
+}
+function seatPrefLabel(m){
+  const id=validSeatPref(m&&m.seatPref);
+  return id ? '<span class="pref-label">'+esc(seatPrefName(id))+'</span>' : '';
+}
+function seatPrefPickerHtml(id, value){
+  const v=validSeatPref(value);
+  return '<input type="hidden" id="'+id+'" value="'+esc(v)+'">'+
+    '<div class="pref-picker" data-pref-picker="'+id+'">'+
+      SEAT_PREFS.map(p=>'<button type="button" class="pref-chip '+(v===p.id?'on':'')+'" onclick="selectSeatPref(\''+id+'\',\''+p.id+'\')">'+esc(p.name)+'</button>').join('')+
+    '</div>';
+}
+function selectSeatPref(id, value){
+  const input=$(id); if(!input) return;
+  input.value=validSeatPref(value);
+  const box=document.querySelector('[data-pref-picker="'+id+'"]');
+  if(!box) return;
+  box.querySelectorAll('.pref-chip').forEach(btn=>btn.classList.remove('on'));
+  const ix=SEAT_PREFS.findIndex(p=>p.id===input.value);
+  const btn=box.querySelectorAll('.pref-chip')[ix>=0?ix:0];
+  if(btn) btn.classList.add('on');
+}
+function normalizeMember(m){
+  return {...m, phone:cleanPhone(m&&m.phone), group:validGroup(m&&m.group), seatPref:validSeatPref(m&&m.seatPref)};
+}
+function groupPickerHtml(id, value){
+  const v=validGroup(value);
+  return '<input type="hidden" id="'+id+'" value="'+esc(v)+'">'+
+    '<div class="group-picker" data-picker="'+id+'">'+
+      '<button type="button" class="group-chip none '+(v?'':'on')+'" onclick="selectGroup(\''+id+'\',\''+'\')"><i style="background:#B9C4BE"></i>不指定</button>'+
+      GROUPS.map(g=>'<button type="button" class="group-chip '+g.cls+' '+(v===g.id?'on':'')+'" onclick="selectGroup(\''+id+'\',\''+g.id+'\')"><i></i>'+esc(groupName(g.id))+'</button>').join('')+
+    '</div>';
+}
+function selectGroup(id, value){
+  const input=$(id); if(!input) return;
+  input.value=validGroup(value);
+  const box=document.querySelector('[data-picker="'+id+'"]');
+  if(!box) return;
+  box.querySelectorAll('.group-chip').forEach(btn=>btn.classList.remove('on'));
+  const ix=input.value ? GROUPS.findIndex(g=>g.id===input.value)+1 : 0;
+  const btn=box.querySelectorAll('.group-chip')[ix];
+  if(btn) btn.classList.add('on');
+}
+function memberStatusText(m){ return isLeave(m&&m.id) ? '請假' : '出席'; }
+function memberMeta(m, opts={}){
+  const parts=[];
+  if(opts.status && m) parts.push(memberStatusText(m));
+  const gl=groupLabel(m); if(gl) parts.push(gl);
+  const sp=validSeatPref(m&&m.seatPref); if(sp) parts.push('偏好：'+seatPrefName(sp));
+  if(opts.phone && m&&m.phone) parts.push('電話：'+m.phone);
+  if(m&&m.note) parts.push(m.note);
+  return parts.join('　');
+}
+function telHref(p){
+  const n=cleanPhone(p).replace(/[^0-9+*#,;]/g,'');
+  return n ? 'tel:'+n : '';
+}
+function callMember(mid){
+  const m=memberById(mid);
+  if(!m || !telHref(m.phone)){
+    toast('尚未填電話');
+    return;
+  }
+  location.href = telHref(m.phone);
+}
 function toast(t){
   const el=$('toast'); el.textContent=t; el.classList.add('show');
   clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),1800);
+}
+function saveUndo(label){
+  const t=trip(); if(!t || !editable()) return;
+  undoState={
+    tripId:t.id, label:label||'上一個動作',
+    assign:JSON.stringify(t.assign||{}),
+    leave:JSON.stringify(t.leave||[]),
+    boarded:JSON.stringify(t.boarded||[]),
+    rcActive:!!t.rcActive
+  };
+}
+function undoLabelHtml(){
+  return undoState && undoState.tripId===trip().id ? '<button class="barbtn primary" onclick="restoreUndo()">復原：'+esc(undoState.label)+'</button>' : '';
+}
+function restoreUndo(){
+  const t=trip();
+  if(!undoState || !t || undoState.tripId!==t.id){ toast('沒有可復原的動作'); return; }
+  t.assign=JSON.parse(undoState.assign||'{}');
+  t.leave=JSON.parse(undoState.leave||'[]');
+  t.boarded=JSON.parse(undoState.boarded||'[]');
+  t.rcActive=!!undoState.rcActive;
+  undoState=null; pending=null; touch(); renderAll(); toast('已復原上一個動作');
+}
+function markLeave(mid, leave, label){
+  const t=trip(); if(!editable()) return;
+  const i=t.leave.indexOf(mid);
+  const want = leave===undefined ? i<0 : !!leave;
+  if(want && i<0){ saveUndo(label||'出席狀態'); t.leave.push(mid); t.boarded=t.boarded.filter(sid=>t.assign[sid]!==mid); touch(); renderAll(); }
+  else if(!want && i>=0){ saveUndo(label||'出席狀態'); t.leave.splice(i,1); touch(); renderAll(); }
+}
+function toggleLeaveMember(mid){
+  const m=memberById(mid); if(!m) return;
+  const was=isLeave(mid);
+  markLeave(mid, !was, was?'取消請假':'標記請假');
+  toast((m?m.name:'')+(was?' 取消請假，會出席':' 標記請假'));
 }
 
 /* ══════════════════ 畫面 ══════════════════ */
@@ -384,6 +635,13 @@ function renderBus(){
   const t=trip();
   const L=LAYOUTS[t.layoutV]||LAYOUTS[DEFAULT_LAYOUT];
   const seats=seatsOf(t.layoutV);
+  const bus=$('busBox');
+  if(bus){
+    bus.classList.remove('rc-missing','rc-complete');
+    if(mode==='rc' && t.rcActive){
+      bus.classList.add(rcComplete(t)?'rc-complete':'rc-missing');
+    }
+  }
   ['left','right'].forEach(side=>{
     const col = side==='left'?$('colL'):$('colR');
     col.innerHTML='';
@@ -417,6 +675,9 @@ function seatEl(seat){
   el.innerHTML='<span class="no">'+seat.no+'</span>';
   if(mid){
     el.classList.add('occ');
+    const gc=groupClassName(m); if(gc) el.classList.add(gc);
+    el.insertAdjacentHTML('beforeend', groupBadge(m));
+    el.insertAdjacentHTML('beforeend', noteBadge(m));
     el.insertAdjacentText('beforeend', m?m.name:'（已移除）');
     if(isLeave(mid)){
       el.classList.add('leave');
@@ -431,7 +692,8 @@ function seatEl(seat){
 }
 
 function renderRoster(){
-  const seated=new Set(Object.values(trip().assign));
+  const t=trip();
+  const seated=new Set(Object.values(t.assign));
   const un = activeMembers().filter(m=>!seated.has(m.id));
   let html;
   if(!DB.members.length){
@@ -439,43 +701,58 @@ function renderRoster(){
   }else{
     html = un.map(m=>{
       const sel = pending&&pending.kind==='assign'&&pending.memberId===m.id?' sel':'';
-      return '<button class="pbtn'+sel+'" onclick="tapMember(\''+m.id+'\')">'+esc(m.name)+
-        (m.note?'<small>'+esc(m.note)+'</small>':'')+'</button>';
+      const gc = groupClassName(m);
+      const leave = isLeave(m.id);
+      const meta = memberMeta(m,{status:true});
+      const action = mode==='att' ? 'toggleLeaveMember' : 'tapMember';
+      return '<button class="pbtn'+sel+(gc?' '+gc:'')+(leave?' leave':'')+'" onclick="'+action+'(\''+m.id+'\')">'+groupBadge(m)+esc(m.name)+
+        (meta?'<small><span class="state">'+esc(memberStatusText(m))+'</span>'+esc(meta.replace(memberStatusText(m),'') ? '　'+meta.replace(memberStatusText(m)+'　','').replace(memberStatusText(m),'') : '')+'</small>':'')+'</button>';
     }).join('') || '<div class="hint">全部都排好了 ✓</div>';
   }
   $('rosterSide').innerHTML = html;
-  $('rosterStrip').innerHTML = (mode==='seat' && editable()) ? html : '';
-  $('asideTitle').textContent = '尚未排座位（'+un.length+' 人）';
+  $('rosterStrip').innerHTML = ((mode==='seat' || mode==='att') && editable()) ? html : '';
+  $('asideTitle').textContent = mode==='att' ? '未排座也可標請假（'+un.length+' 人）' : '尚未排座位（'+un.length+' 人）';
 }
 
 function renderStatus(){
   const sb=$('statusbar');
+  sb.classList.remove('rc-warn','rc-ok');
   const t=trip();
   const ro = editable()? '' : '<span class="chip ro">舊行程・只能查看</span>';
-  const seatedIds=Object.values(t.assign);
-  const leaveN=t.leave.length;
-  const goN=seatedIds.filter(mid=>!t.leave.includes(mid)).length;
+  const active=activeMembers();
+  const leaveN=active.filter(m=>t.leave.includes(m.id)).length;
+  const goN=active.length-leaveN;
+  const assignedN=Object.keys(t.assign||{}).length;
+  const undo=(editable() && mode!=='rc')?undoLabelHtml():'';
   if(mode==='seat'){
-    const seated=new Set(seatedIds);
-    const un=activeMembers().filter(m=>!seated.has(m.id)).length;
-    sb.innerHTML=ro+'<span>點<b>名單上的人</b>，再點<b>空位</b>就完成。點已有人的座位可以換位。</span>'+
+    const seated=new Set(Object.values(t.assign));
+    const un=active.filter(m=>!seated.has(m.id)).length;
+    const fillable=active.filter(m=>!seated.has(m.id)&&!isLeave(m.id)).length;
+    const free=seatsOf(t.layoutV).filter(s=>!t.assign[s.id]).length;
+    sb.innerHTML=ro+'<span>點<b>名單上的人</b>，再點<b>空位</b>。未排名單會直接顯示出席／請假。</span>'+undo+
+      (fillable&&free?'<button class="barbtn primary" onclick="openAutoFillSeats()">自動填滿剩餘空位</button>':'')+
+      (assignedN?'<button class="barbtn danger" onclick="openClearSeats()">全部移出座位</button>':'')+
       (un?'<span class="chip">還有 '+un+' 人未排</span>':'<span class="chip ok">全部排好 ✓</span>');
   }else if(mode==='att'){
-    sb.innerHTML=ro+'<span class="big ok">出席 '+goN+' 人</span><span class="big" style="color:var(--muted)">請假 '+leaveN+' 人</span>'+
-      '<span style="font-size:14px;color:var(--muted)">點座位就能標請假／取消請假</span>';
+    sb.innerHTML=ro+'<span class="big ok">出席 '+goN+' 人</span><span class="big" style="color:var(--muted)">請假 '+leaveN+' 人</span>'+undo+
+      '<span style="font-size:14px;color:var(--muted)">點座位或右邊未排名單，都能標請假／取消請假</span>';
   }else{
-    const targets=Object.keys(t.assign).filter(sid=>!t.leave.includes(t.assign[sid]));
+    const targets=rcTargets(t);
     if(!t.rcActive){
-      sb.innerHTML=ro+'<span>到休息站，按「開始點名」，大家回車時點座位打勾。</span>';
+      sb.innerHTML=ro+'<span>到休息站，按「開始點名」，大家回車時點座位打勾。</span>'+undo;
     }else{
-      const missing=targets.filter(sid=>!t.boarded.includes(sid));
-      if(missing.length===0){
-        sb.innerHTML='<span class="big ok">全員到齊 🎉（'+targets.length+' 人）</span>';
+      const missing=rcMissing(t);
+      if(missing.length===0 && targets.length){
+        sb.classList.add('rc-ok');
+        sb.innerHTML='<span class="big ok">全員到齊 ✓（'+targets.length+' 人）</span>'+undo+
+          '<span style="font-size:14px;color:var(--green)">座位表外框已轉綠，這一輪點名完成。</span>';
       }else{
-        sb.innerHTML='<span class="big warn">還差 '+missing.length+' 人</span>'+
+        sb.classList.add('rc-warn');
+        sb.innerHTML='<span class="big warn">點名中，還差 '+missing.length+' 人</span>'+undo+
+          '<span style="font-size:14px;color:var(--red)">紅框代表尚未完成。</span>'+
           missing.map(sid=>{
             const m=memberById(t.assign[sid]);
-            return '<span class="chip miss">'+esc(m?m.name:'?')+'</span>';
+            return '<button class="chip miss" onclick="openContactActionsBySeat(\''+sid+'\')">'+esc(m?m.name:'?')+'</button>';
           }).join('');
       }
     }
@@ -486,7 +763,11 @@ function renderRcBtn(){
   const b=$('rcBtn');
   if(mode!=='rc' || !editable()){ b.style.display='none'; return; }
   b.style.display='block';
-  if(trip().rcActive){ b.textContent='結束這一輪點名'; b.classList.add('rc-done'); }
+  const t=trip();
+  if(t.rcActive){
+    b.textContent=rcComplete(t)?'點名完成，結束這一輪':'結束這一輪點名';
+    b.classList.add('rc-done');
+  }
   else{ b.textContent='開始點名'; b.classList.remove('rc-done'); }
 }
 
@@ -512,7 +793,9 @@ function setMode(m){
   renderAll();
 }
 function tapMember(mid){
-  if(mode!=='seat' || !editable()) return;
+  if(!editable()) return;
+  if(mode==='att'){ toggleLeaveMember(mid); return; }
+  if(mode!=='seat') return;
   pending = (pending&&pending.kind==='assign'&&pending.memberId===mid) ? null : {kind:'assign',memberId:mid};
   renderAll();
 }
@@ -524,8 +807,7 @@ function tapSeat(seat){
 
   if(!editable()){
     if(mid){
-      const m=memberById(mid);
-      toast(seat.no+' 號：'+(m?m.name:'（已移除）')+(t.leave.includes(mid)?'（當時請假）':''));
+      openContactActions(seat, mid, true);
     }
     return;
   }
@@ -533,6 +815,7 @@ function tapSeat(seat){
   if(pending){
     if(pending.kind==='assign'){
       if(!mid){
+        saveUndo('安排座位');
         t.assign[seat.id]=pending.memberId;
         toast(memberById(pending.memberId).name+' → '+seat.no+' 號');
         pending=null; touch(); renderAll();
@@ -541,12 +824,14 @@ function tapSeat(seat){
         openActs(seat.no+' 號已有 '+(cur?cur.name:''),
           '要讓 <b>'+esc(newP.name)+'</b> 坐這裡嗎？'+esc(cur?cur.name:'')+' 會變成沒有座位。',[
           {t:'換成 '+newP.name+' 坐', cls:'primary', fn:()=>{
+            saveUndo('換成他坐');
             t.assign[seat.id]=pending.memberId; pending=null; closeSheet(); touch(); renderAll();
           }},
         ]);
       }
     }else if(pending.kind==='move'){
       if(seat.id===pending.fromSeat){ pending=null; renderAll(); return; }
+      saveUndo('換位');
       const from=pending.fromSeat;
       const a=t.assign[from], b=t.assign[seat.id];
       t.assign[seat.id]=a;
@@ -569,11 +854,7 @@ function tapSeat(seat){
 
   if(mode==='att'){
     if(!mid) return;
-    const m=memberById(mid);
-    const i=t.leave.indexOf(mid);
-    if(i>=0){ t.leave.splice(i,1); toast((m?m.name:'')+' 取消請假，會出席'); }
-    else{ t.leave.push(mid); toast((m?m.name:'')+' 標記請假'); }
-    touch(); renderAll();
+    toggleLeaveMember(mid);
     return;
   }
 
@@ -581,15 +862,18 @@ function tapSeat(seat){
   if(!mid) return;
   const m=memberById(mid);
   openActs(seat.no+' 號・'+(m?m.name:'（已移除）'),
-    m&&m.note?('備註：<b>'+esc(m.note)+'</b>'):'（沒有備註）',[
+    contactNote(m),[
     {t:'換位（再點一個座位）', cls:'primary', fn:()=>{ pending={kind:'move',fromSeat:seat.id}; closeSheet(); renderAll(); }},
     {t:isLeave(mid)?'取消請假':'標記請假', fn:()=>{
+      saveUndo(isLeave(mid)?'取消請假':'標記請假');
       const i=t.leave.indexOf(mid);
       if(i>=0)t.leave.splice(i,1); else t.leave.push(mid);
       closeSheet(); touch(); renderAll();
     }},
+    {t:(m&&telHref(m.phone))?'撥打電話：'+cleanPhone(m.phone):'尚未填電話（點此補電話）', fn:()=>{ if(!m) return; if(telHref(m.phone)) callMember(m.id); else openPhoneEditor(m.id); }},
     {t:'編輯備註', fn:()=>{ if(m) openNoteEditor(m); }},
     {t:'移出座位（回到未排名單）', cls:'danger', fn:()=>{
+      saveUndo('移出座位');
       delete t.assign[seat.id]; closeSheet(); touch(); renderAll();
       toast((m?m.name:'')+' 回到未排名單');
     }},
@@ -602,6 +886,96 @@ function toggleRollcall(){
   else{ t.rcActive=false; t.boarded=[]; }
   touch(); renderAll();
 }
+function openClearSeats(){
+  const t=trip();
+  const n=Object.keys(t.assign||{}).length;
+  if(!editable() || !n){ toast('目前沒有已安排座位'); return; }
+  openActs('全部移出座位','會把目前行程的 '+n+' 個座位全部清空，人會回到未排名單。請假狀態會保留。',[
+    {t:'確定全部移出座位', cls:'danger', fn:()=>clearAllSeats()},
+  ]);
+}
+function clearAllSeats(){
+  const t=trip();
+  saveUndo('全部移出座位');
+  t.assign={}; t.boarded=[]; pending=null; closeSheet(); touch(); renderAll(); toast('已全部移出座位');
+}
+function seatRole(seat){
+  const left=String(seat.zone||'').startsWith('L');
+  const right=String(seat.zone||'').startsWith('R');
+  const aisle=(left&&seat.col===1)||(right&&seat.col===0);
+  const win=(left&&seat.col===0)||(right&&seat.col===1);
+  return {aisle, window:win};
+}
+function sameGroupDistanceScore(seat, m, t){
+  const g=validGroup(m&&m.group);
+  if(!g) return 0;
+  const seats=seatsOf(t.layoutV);
+  let best=999;
+  Object.keys(t.assign||{}).forEach(sid=>{
+    const other=memberById(t.assign[sid]);
+    if(other && other.id!==m.id && validGroup(other.group)===g){
+      const os=seats.find(x=>x.id===sid);
+      if(os) best=Math.min(best, Math.abs(os.no-seat.no));
+    }
+  });
+  return best===999 ? 0 : Math.min(best,10)*3;
+}
+function autoSeatScore(seat, m, t){
+  const role=seatRole(seat);
+  const pref=validSeatPref(m&&m.seatPref);
+  let score=seat.no/100;
+  if(pref==='aisle') score += role.aisle ? 0 : 1000;
+  else if(pref==='window') score += role.window ? 0 : 1000;
+  else if(pref==='front') score += seat.no;
+  else if(pref==='rear') score += (1000-seat.no);
+  score += sameGroupDistanceScore(seat,m,t);
+  return score;
+}
+function autoFillOrder(a,b){
+  const pr={aisle:0,window:0,front:1,rear:1,'':2};
+  const pa=pr[validSeatPref(a.seatPref)]??2, pb=pr[validSeatPref(b.seatPref)]??2;
+  if(pa!==pb) return pa-pb;
+  const ga=validGroup(a.group), gb=validGroup(b.group);
+  if(ga!==gb) return (ga||'zz').localeCompare(gb||'zz');
+  return String(a.name||'').localeCompare(String(b.name||''),'zh-Hant');
+}
+function openAutoFillSeats(){
+  const t=trip();
+  const seated=new Set(Object.values(t.assign||{}));
+  const people=activeMembers().filter(m=>!seated.has(m.id)&&!isLeave(m.id));
+  const free=seatsOf(t.layoutV).filter(s=>!t.assign[s.id]);
+  if(!editable()){ toast('舊行程不能自動排座'); return; }
+  if(!people.length){ toast('沒有可自動安排的人'); return; }
+  if(!free.length){ toast('沒有空位'); return; }
+  openActs('自動填滿剩餘空位',
+    '會把尚未排座位、且沒有請假的山友，自動安排到剩餘空位。<br><b>已經手動排好的座位不會被移動。</b><br>系統會依座位偏好優先安排：走道、靠窗、前排、後排；同群組會盡量靠近。',
+    [{t:'開始自動填滿 '+Math.min(people.length,free.length)+' 人', cls:'primary', fn:()=>autoFillSeats()}]);
+}
+function autoFillSeats(){
+  const t=trip(); if(!editable()) return;
+  const seated=new Set(Object.values(t.assign||{}));
+  const people=activeMembers().filter(m=>!seated.has(m.id)&&!isLeave(m.id)).sort(autoFillOrder);
+  const free=seatsOf(t.layoutV).filter(s=>!t.assign[s.id]);
+  if(!people.length || !free.length){ closeSheet(); toast('沒有可自動安排的人或空位'); return; }
+  saveUndo('自動填滿');
+  let assigned=0; const counts={aisle:0,window:0,front:0,rear:0,'':0};
+  while(people.length && free.length){
+    const m=people.shift();
+    free.sort((a,b)=>autoSeatScore(a,m,t)-autoSeatScore(b,m,t) || a.no-b.no);
+    const seat=free.shift();
+    t.assign[seat.id]=m.id;
+    counts[validSeatPref(m.seatPref)]++;
+    assigned++;
+  }
+  pending=null; t.boarded=[]; closeSheet(); touch(); renderAll();
+  const detail=[];
+  if(counts.aisle) detail.push('走道 '+counts.aisle);
+  if(counts.window) detail.push('靠窗 '+counts.window);
+  if(counts.front) detail.push('前排 '+counts.front);
+  if(counts.rear) detail.push('後排 '+counts.rear);
+  if(counts['']) detail.push('無偏好 '+counts['']);
+  toast('已自動安排 '+assigned+' 人'+(detail.length?'：'+detail.join('、'):''));
+}
 
 /* ══════════════════ 彈出視窗 ══════════════════ */
 function sheetHTML(html){
@@ -610,6 +984,37 @@ function sheetHTML(html){
 }
 function closeSheet(){ $('overlay').classList.remove('show'); }
 let _acts=[];
+function contactNote(m){
+  if(!m) return '（資料已移除）';
+  const phone = cleanPhone(m.phone);
+  const note = String(m.note||'').trim();
+  const gl = groupLabel(m);
+  let html = phone ? '電話：<b>'+esc(phone)+'</b>' : '<b>尚未填電話</b>';
+  if(gl) html += '<br>群組：<b>'+esc(gl)+'</b>';
+  const sp=validSeatPref(m.seatPref);
+  if(sp) html += '<br>座位偏好：<b>'+esc(seatPrefName(sp))+'</b>';
+  if(note) html += '<br>備註：<b>'+esc(note)+'</b>';
+  return html;
+}
+function openContactActions(seat, mid, readonly){
+  const m=memberById(mid);
+  const acts=[];
+  if(m && telHref(m.phone)){
+    acts.push({t:'撥打電話：'+cleanPhone(m.phone), cls:'primary', fn:()=>callMember(mid)});
+  }else{
+    acts.push({t:'尚未填電話（點此補電話）', fn:()=>{ if(m) openPhoneEditor(mid); }});
+  }
+  if(!readonly && m){
+    acts.push({t:'編輯旅客資料', fn:()=>editMember(m.id)});
+  }
+  openActs((seat?seat.no+' 號・':'')+(m?m.name:'（已移除）'), contactNote(m), acts);
+}
+function openContactActionsBySeat(sid){
+  const t=trip();
+  const mid=t.assign[sid];
+  const seat=seatsOf(t.layoutV).find(s=>s.id===sid);
+  if(mid) openContactActions(seat, mid, !editable());
+}
 function openActs(title, note, acts){
   _acts=acts;
   sheetHTML('<h2>'+esc(title)+'</h2><div class="note">'+note+'</div>'+
@@ -631,6 +1036,25 @@ function saveNote(mid){
   const m=memberById(mid); if(!m) return;
   m.note=$('noteTa').value.trim();
   touchMembers(); closeSheet(); renderAll(); toast('備註已儲存');
+}
+function openPhoneEditor(mid){
+  const m=memberById(mid); if(!m) return;
+  sheetHTML('<h2>補電話：'+esc(m.name)+'</h2>'+
+    '<div class="note">填入後會存回名冊，之後排座位與點名頁都能直接撥打。</div>'+
+    '<div class="field"><label>電話</label><input id="quickPhone" inputmode="tel" value="'+esc(m.phone||'')+'" placeholder="例如：0912-345-678"></div>'+
+    '<div class="acts">'+
+      '<button class="act primary" onclick="saveQuickPhone(\''+m.id+'\',false)">儲存電話</button>'+
+      '<button class="act" onclick="saveQuickPhone(\''+m.id+'\',true)">儲存後撥打</button>'+
+      '<button class="act cancel" onclick="closeSheet()">取消</button></div>');
+  setTimeout(()=>$('quickPhone').focus(),100);
+}
+function saveQuickPhone(mid, callAfter){
+  const m=memberById(mid); if(!m) return;
+  const phone=cleanPhone($('quickPhone').value);
+  if(!phone){ toast('請先輸入電話'); return; }
+  m.phone=phone;
+  touchMembers(); closeSheet(); renderAll(); toast('電話已儲存');
+  if(callAfter && telHref(m.phone)) setTimeout(()=>callMember(mid),150);
 }
 
 /* ══════════════════ 行程管理 ══════════════════ */
@@ -683,25 +1107,38 @@ function openAdmin(){
 }
 
 function openMembers(){
-  const rows=DB.members.map(m=>
-    '<div class="listrow"><div class="grow"><div class="nm">'+esc(m.name)+
-    (m.inactive?'<span style="color:var(--muted);font-size:13px">　（停用）</span>':'')+
-    (m.note?'<small>'+esc(m.note)+'</small>':'')+'</div></div>'+
-    '<button class="mini" onclick="editMember(\''+m.id+'\')">編輯</button>'+
-    '<button class="mini off" onclick="toggleMember(\''+m.id+'\')">'+(m.inactive?'啟用':'停用')+'</button>'+
-    '</div>').join('') || '<div class="hint">還沒有任何人，先在下面新增。</div>';
-  sheetHTML('<h2>名冊管理</h2>'+
-    '<div class="note">「停用」不會刪除資料，只是不再出現在名單上；舊行程的紀錄都會保留。</div>'+
-    '<div class="field"><div class="row2">'+
-      '<input id="nmNew" placeholder="輸入姓名" style="flex:1;padding:12px;font-size:18px;border:1.5px solid var(--line);border-radius:10px">'+
-      '<button class="act primary" style="flex:none;width:auto;padding:12px 18px" onclick="addMember()">新增</button>'+
-    '</div></div>'+rows+
+  const rows=DB.members.map(m=>{
+    const gc=groupClassName(m);
+    const meta=memberMeta(m,{phone:true});
+    return '<div class="listrow"><div class="grow"><div class="nm">'+
+      (gc?'<span class="group-label '+gc+'">'+esc(groupLabel(m))+'</span>':'')+esc(m.name)+
+      (m.inactive?'<span style="color:var(--muted);font-size:13px">　（停用）</span>':'')+
+      (meta?'<small>'+esc(meta)+'</small>':'')+'</div></div>'+ 
+      '<button class="mini" onclick="editMember(\''+m.id+'\')">編輯</button>'+ 
+      '<button class="mini off" onclick="toggleMember(\''+m.id+'\')">'+(m.inactive?'啟用':'停用')+'</button>'+ 
+      '</div>';
+  }).join('') || '<div class="hint">還沒有任何人，先在下面新增，或用 CSV 匯入。</div>';
+  sheetHTML('<h2>名冊管理</h2>'+ 
+    '<div class="note">可以一筆筆新增，也可以先在電腦用 Excel／Google 試算表編輯 CSV，再回來匯入。CSV 匯入會合併更新，不會自動刪掉沒出現在檔案裡的人。</div>'+ 
+    '<div class="field"><label>新增山友</label><input id="nmNew" placeholder="姓名"></div>'+ 
+    '<div class="field"><input id="phNew" inputmode="tel" placeholder="電話，可留空"></div>'+ 
+    '<div class="field"><label>群組色彩</label>'+groupPickerHtml('gpNew','')+'</div>'+ 
+    '<div class="field"><label>座位偏好</label>'+seatPrefPickerHtml('prefNew','')+'</div>'+ 
+    '<div class="acts" style="margin-bottom:14px">'+
+      '<button class="act primary" onclick="addMember()">新增</button>'+ 
+      '<button class="act" onclick="exportMembersCsv()">匯出名冊 CSV</button>'+ 
+      '<button class="act" onclick="openMembersCsvImport()">匯入名冊 CSV</button>'+ 
+      '<button class="act" onclick="openGroupNameEditor()">編輯群組名稱</button>'+ 
+    '</div>'+rows+
     '<div class="acts" style="margin-top:14px"><button class="act cancel" onclick="openAdmin()">返回管理</button></div>');
 }
 function addMember(){
   const name=$('nmNew').value.trim();
   if(!name){ toast('請先輸入姓名'); return; }
-  DB.members.push({id:newId('m'), name, note:'', inactive:false});
+  const phone=cleanPhone($('phNew').value);
+  const group=validGroup($('gpNew').value);
+  const seatPref=validSeatPref($('prefNew').value);
+  DB.members.push({id:newId('m'), name, phone, group, seatPref, note:'', inactive:false});
   touchMembers(); openMembers(); toast('已新增 '+name);
 }
 function toggleMember(mid){
@@ -713,7 +1150,10 @@ function editMember(mid){
   const m=memberById(mid); if(!m) return;
   sheetHTML('<h2>編輯：'+esc(m.name)+'</h2>'+
     '<div class="field"><label>姓名</label><input id="emName" value="'+esc(m.name)+'"></div>'+
-    '<div class="field"><label>備註</label><textarea id="emNote">'+esc(m.note||'')+'</textarea></div>'+
+    '<div class="field"><label>電話</label><input id="emPhone" inputmode="tel" value="'+esc(m.phone||'')+'" placeholder="例如：0912-345-678"></div>'+ 
+    '<div class="field"><label>群組色彩</label>'+groupPickerHtml('emGroup',m.group)+'</div>'+ 
+    '<div class="field"><label>座位偏好</label>'+seatPrefPickerHtml('emSeatPref',m.seatPref)+'</div>'+ 
+    '<div class="field"><label>備註</label><textarea id="emNote">'+esc(m.note||'')+'</textarea></div>'+ 
     '<div class="acts">'+
       '<button class="act primary" onclick="saveMember(\''+m.id+'\')">儲存</button>'+
       '<button class="act cancel" onclick="openMembers()">返回</button></div>');
@@ -722,8 +1162,25 @@ function saveMember(mid){
   const m=memberById(mid); if(!m) return;
   const name=$('emName').value.trim();
   if(!name){ toast('姓名不能是空的'); return; }
-  m.name=name; m.note=$('emNote').value.trim();
+  m.name=name; m.phone=cleanPhone($('emPhone').value); m.group=validGroup($('emGroup').value); m.seatPref=validSeatPref($('emSeatPref').value); m.note=$('emNote').value.trim();
   touchMembers(); openMembers(); toast('已儲存');
+}
+
+function openGroupNameEditor(){
+  const rows=GROUPS.map(g=>
+    '<div class="group-name-row '+g.cls+'"><i></i><input id="gn'+g.id+'" value="'+esc(groupName(g.id))+'" placeholder="'+esc(g.name)+'" style="flex:1;padding:10px;font-size:17px;border:1.5px solid var(--line);border-radius:10px"></div>'
+  ).join('');
+  sheetHTML('<h2>編輯群組名稱</h2>'+ 
+    '<div class="note">色彩固定最多 10 組；名稱可以改成夫妻、朋友、某家庭、小隊等。改名稱不會影響已指定的群組。</div>'+rows+
+    '<div class="acts"><button class="act primary" onclick="saveGroupNames()">儲存群組名稱</button><button class="act" onclick="resetGroupNames()">恢復預設名稱</button><button class="act cancel" onclick="openMembers()">返回名冊管理</button></div>');
+}
+function saveGroupNames(){
+  DB.groupNames=DB.groupNames||{};
+  GROUPS.forEach(g=>{ const el=$('gn'+g.id); DB.groupNames[g.id]=(el&&el.value.trim())||g.name; });
+  touchMembers(); openMembers(); toast('群組名稱已儲存');
+}
+function resetGroupNames(){
+  DB.groupNames=defaultGroupNames(); touchMembers(); openGroupNameEditor(); toast('已恢復預設名稱');
 }
 
 function loadDemo(){
@@ -740,8 +1197,113 @@ function loadDemo(){
     ['卓明輝',''],['殷秋菊',''],['柯萬得',''],['饒素芬',''],
     ['湯金龍',''],['雷麗珍',''],['傅山河',''],['駱惠美',''],
   ];
-  names.forEach(n=>DB.members.push({id:newId('m'), name:n[0], note:n[1], inactive:false}));
+  names.forEach((n,i)=>{
+    const group = (n[0]==='林美惠'||n[0]==='王榮發') ? '1' : (n[0]==='郭素梅'||n[0]==='賴金鳳') ? '2' : '';
+    const seatPref = n[1].includes('走道') ? 'aisle' : (n[1].includes('前排')||n[1].includes('暈車')) ? 'front' : '';
+    DB.members.push({id:newId('m'), name:n[0], phone:'', group, seatPref, note:n[1], inactive:false});
+  });
   touchMembers(); closeSheet(); renderAll(); toast('已載入 42 位示範山友');
+}
+
+/* CSV 名冊匯入／匯出 */
+function csvEscape(v){
+  const s=String(v??'');
+  return /[",\r\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+}
+function downloadTextFile(filename, text, type){
+  const blob=new Blob([text],{type:type||'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+}
+function memberCsvRows(includeData){
+  const headers=['ID','姓名','電話','群組','座位偏好','備註','停用'];
+  const rows=[headers];
+  if(includeData){
+    DB.members.forEach(m=>rows.push([m.id,m.name||'',m.phone||'',validGroup(m.group),seatPrefCsv(m.seatPref),m.note||'',m.inactive?'是':'']));
+  }
+  return '\ufeff'+rows.map(r=>r.map(csvEscape).join(',')).join('\r\n');
+}
+function exportMembersCsv(){
+  const d=new Date();
+  const fn='山友名冊-'+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'.csv';
+  downloadTextFile(fn, memberCsvRows(true), 'text/csv;charset=utf-8');
+  toast('已匯出名冊 CSV');
+}
+function downloadMemberCsvTemplate(){
+  downloadTextFile('山友名冊空白範本.csv', memberCsvRows(false), 'text/csv;charset=utf-8');
+}
+function parseCsv(text){
+  text=String(text||'').replace(/^\ufeff/,'');
+  const rows=[]; let row=[], cell='', q=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i], nx=text[i+1];
+    if(q){
+      if(ch==='"' && nx==='"'){ cell+='"'; i++; }
+      else if(ch==='"'){ q=false; }
+      else cell+=ch;
+    }else{
+      if(ch==='"') q=true;
+      else if(ch===','){ row.push(cell); cell=''; }
+      else if(ch==='\n'){
+        row.push(cell); rows.push(row); row=[]; cell='';
+      }else if(ch==='\r'){
+        if(nx==='\n') continue;
+        row.push(cell); rows.push(row); row=[]; cell='';
+      }else cell+=ch;
+    }
+  }
+  row.push(cell); rows.push(row);
+  return rows.filter(r=>r.some(c=>String(c).trim()!==''));
+}
+function openMembersCsvImport(){
+  sheetHTML('<h2>匯入名冊 CSV</h2>'+ 
+    '<div class="note">先下載空白範本，或匯出現有名冊後在電腦修改。欄位為：ID、姓名、電話、群組、座位偏好、備註、停用。<br><b>ID 請不要改</b>，這樣匯入後原本座位安排會保留。群組可填 1～10，或填你已命名的群組名稱；座位偏好可填「走道優先、靠窗優先、前排優先、後排優先、無偏好」；停用可填「是」。</div>'+ 
+    '<div class="acts" style="margin-bottom:12px"><button class="act" onclick="downloadMemberCsvTemplate()">下載空白範本</button></div>'+ 
+    '<div class="field"><input type="file" id="memberCsvFile" accept=".csv,text/csv"></div>'+ 
+    '<div class="acts">'+ 
+      '<button class="act primary" onclick="doMemberCsvImport()">匯入 CSV（合併更新）</button>'+ 
+      '<button class="act cancel" onclick="openMembers()">返回名冊管理</button>'+ 
+    '</div>');
+}
+function csvBool(v){
+  const s=String(v||'').trim().toLowerCase();
+  return ['1','true','yes','y','是','停用','停用中','inactive'].includes(s);
+}
+function doMemberCsvImport(){
+  const f=$('memberCsvFile').files[0];
+  if(!f){ toast('請先選擇 CSV 檔'); return; }
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const rows=parseCsv(rd.result);
+      if(rows.length<2) throw new Error('empty');
+      const headers=rows[0].map(h=>String(h||'').trim());
+      const idx=name=>headers.findIndex(h=>h===name || h.toLowerCase()===name.toLowerCase());
+      const iId=idx('ID'), iName=idx('姓名'), iPhone=idx('電話'), iGroup=idx('群組'), iPref=idx('座位偏好'), iNote=idx('備註'), iInactive=idx('停用');
+      if(iName<0) throw new Error('no name');
+      let added=0, updated=0, skipped=0;
+      rows.slice(1).forEach(r=>{
+        const name=String(r[iName]||'').trim();
+        if(!name){ skipped++; return; }
+        const id=iId>=0?String(r[iId]||'').trim():'';
+        let m = id ? DB.members.find(x=>x.id===id) : null;
+        if(!m) m = DB.members.find(x=>x.name===name);
+        if(!m){ m={id:id||newId('m'), name:'', phone:'', group:'', seatPref:'', note:'', inactive:false}; DB.members.push(m); added++; }
+        else updated++;
+        m.name=name;
+        if(iPhone>=0) m.phone=cleanPhone(r[iPhone]);
+        if(iGroup>=0) m.group=validGroup(r[iGroup]);
+        if(iPref>=0) m.seatPref=validSeatPref(r[iPref]);
+        if(iNote>=0) m.note=String(r[iNote]||'').trim();
+        if(iInactive>=0) m.inactive=csvBool(r[iInactive]);
+      });
+      touchMembers(); closeSheet(); renderAll(); openMembers();
+      toast('匯入完成：新增 '+added+'、更新 '+updated+(skipped?'、略過 '+skipped:''));
+    }catch(e){
+      toast('CSV 格式不正確，至少要有「姓名」欄');
+    }
+  };
+  rd.readAsText(f,'utf-8');
 }
 
 /* 備份 */
@@ -860,7 +1422,7 @@ function schedulePush(){
 function mergeRemote(r){
   if(!r) return;
   if((r.membersUpdatedAt||0) > (DB.membersUpdatedAt||0)){
-    DB.members=r.members||[]; DB.membersUpdatedAt=r.membersUpdatedAt||0;
+    DB.members=(r.members||[]).map(normalizeMember); DB.groupNames={...defaultGroupNames(), ...(r.groupNames||{})}; DB.membersUpdatedAt=r.membersUpdatedAt||0;
   }
   (r.trips||[]).forEach(rt=>{
     const lt=DB.trips.find(t=>t.id===rt.id);
@@ -921,9 +1483,16 @@ async function shareChart(){
             const x=x0+c*(SW+GAP);
             const mid=t.assign[seat.id];
             const onLeave=mid&&t.leave.includes(mid);
-            ctx.fillStyle=onLeave?'#E3E5E2':(mid?'#F4F8F5':'#FFFFFF');
-            ctx.strokeStyle=mid?'#9DB3A6':'#C7CEC9'; ctx.lineWidth=1.5;
+            const gm=mid?memberById(mid):null;
+            const gi=gm?groupInfo(gm.group):null;
+            ctx.fillStyle=onLeave?'#E3E5E2':(gi?gi.fill:(mid?'#F4F8F5':'#FFFFFF'));
+            ctx.strokeStyle=gi?gi.color:(mid?'#9DB3A6':'#C7CEC9'); ctx.lineWidth=gi?2.3:1.5;
             roundRect(ctx,x,y,SW,SH,8);
+            if(gi){
+              ctx.fillStyle=gi.color; ctx.fillRect(x+1,y+SH-6,SW-2,5);
+              ctx.fillStyle='#FFFFFF'; ctx.font='700 10px sans-serif'; ctx.textAlign='left';
+              ctx.fillText(gi.id, x+7, y+SH-10);
+            }
             ctx.fillStyle='#ADB6B1'; ctx.font='400 10px sans-serif'; ctx.textAlign='left';
             ctx.fillText(seat.no, x+5, y+13);
             ctx.textAlign='center';
