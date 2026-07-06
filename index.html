@@ -405,7 +405,7 @@
 <div id="toast"></div>
 
 <footer>
-  <span id="appVersionText">山友團座位表 v5.5</span>
+  <span id="appVersionText">山友團座位表 v5.5.1</span>
   <button onclick="openVersionInfo()">版本資訊</button>
   <button onclick="openAdmin()">管理（維護者用）</button>
 </footer>
@@ -453,8 +453,8 @@ function seatsOf(layoutV){
 }
 
 /* ══════════════════ 資料 ══════════════════ */
-const APP_VERSION='v5.5';
-const APP_BUILD='2026-07-06';
+const APP_VERSION='v5.5.1';
+const APP_BUILD='2026-07-06 熱修';
 const APP_NAME='山友團座位表';
 const KEY='bustool-v2';
 const SYNCKEY='bustool-sync';
@@ -639,6 +639,49 @@ function memberMeta(m, opts={}){
   if(m&&m.note) parts.push(m.note);
   return parts.join('　');
 }
+
+function cleanLineUrl(v){
+  let s=String(v||'').trim();
+  if(!s) return '';
+  /* 允許直接貼 line.me 連結；若只貼 @ID，轉成 LINE 開啟入口。 */
+  if(/^@/.test(s)) return 'https://line.me/R/ti/p/'+encodeURIComponent(s);
+  if(/^line:\/\//i.test(s)) return s;
+  if(/^https?:\/\//i.test(s)) return s;
+  /* 一般文字不要自動當網址，避免誤開錯人。 */
+  return s;
+}
+function lineHref(v){
+  const s=cleanLineUrl(v);
+  if(!s) return '';
+  if(/^line:\/\//i.test(s) || /^https?:\/\//i.test(s)) return s;
+  return '';
+}
+function openLine(mid){
+  const m=memberById(mid);
+  const href=m ? lineHref(m.lineUrl) : '';
+  if(!href){ toast('尚未填 LINE'); return; }
+  location.href=href;
+}
+function openLineEditor(mid){
+  const m=memberById(mid); if(!m) return;
+  sheetHTML('<h2>補 LINE：'+esc(m.name)+'</h2>'+ 
+    '<div class="note">貼上對方提供的 LINE 連結，例如 https://line.me/ti/p/xxxxxx。這是開啟 LINE 資料／加好友入口，不保證直接撥 LINE 電話。</div>'+ 
+    '<div class="field"><label>LINE 連結</label><input id="quickLine" inputmode="url" value="'+esc(m.lineUrl||'')+'" placeholder="例如：https://line.me/ti/p/xxxxxx"></div>'+ 
+    '<div class="acts">'+
+      '<button class="act primary" onclick="saveQuickLine(\''+m.id+'\',false)">儲存 LINE</button>'+ 
+      '<button class="act" onclick="saveQuickLine(\''+m.id+'\',true)">儲存後開啟 LINE</button>'+ 
+      '<button class="act cancel" onclick="closeSheet()">取消</button></div>');
+  setTimeout(()=>$('quickLine').focus(),100);
+}
+function saveQuickLine(mid, openAfter){
+  const m=memberById(mid); if(!m) return;
+  const line=cleanLineUrl($('quickLine').value);
+  if(!line){ toast('請先輸入 LINE 連結'); return; }
+  m.lineUrl=line;
+  touchMembers(); closeSheet(); renderAll(); toast('LINE 已儲存');
+  if(openAfter && lineHref(m.lineUrl)) setTimeout(()=>openLine(mid),150);
+}
+
 function telHref(p){
   const n=cleanPhone(p).replace(/[^0-9+*#,;]/g,'');
   return n ? 'tel:'+n : '';

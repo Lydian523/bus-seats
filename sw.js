@@ -1,5 +1,5 @@
 /* 離線快取：讓 App 在山區沒有網路時照樣能開啟 */
-const CACHE = 'bustool-v5-5';   /* 每次更新程式時，把 v1 改成 v2、v3… */
+const CACHE = 'bustool-v5-5-1';   /* 每次更新程式時，把 v1 改成 v2、v3… */
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
