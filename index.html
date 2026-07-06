@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#2E6B4E">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>山友團座位表 v5.5</title>
+<title>山友團座位表 v5.5.2</title>
 <style>
   :root{
     --green:#2E6B4E; --green-dk:#24523C; --green-lt:#DFF0E2;
@@ -405,7 +405,7 @@
 <div id="toast"></div>
 
 <footer>
-  <span id="appVersionText">山友團座位表 v5.5.1</span>
+  <span id="appVersionText">山友團座位表 v5.5.2</span>
   <button onclick="openVersionInfo()">版本資訊</button>
   <button onclick="openAdmin()">管理（維護者用）</button>
 </footer>
@@ -453,7 +453,7 @@ function seatsOf(layoutV){
 }
 
 /* ══════════════════ 資料 ══════════════════ */
-const APP_VERSION='v5.5.1';
+const APP_VERSION='v5.5.2';
 const APP_BUILD='2026-07-06 熱修';
 const APP_NAME='山友團座位表';
 const KEY='bustool-v2';
@@ -489,6 +489,7 @@ function load(){
   if(!DB.trips.length){
     DB.trips.push(newTripObj('第一次出遊', todayText(), null));
   }
+  ensureCurrentTrip();
 }
 function persist(){ localStorage.setItem(KEY, JSON.stringify(DB)); }
 function todayText(){
@@ -496,13 +497,22 @@ function todayText(){
   return (d.getMonth()+1)+' 月 '+d.getDate()+' 日';
 }
 
-/* 目前檢視的行程；最新建立的那個行程才能編輯 */
+/* 目前檢視的行程；只有「目前行程」可編輯。
+   v5.5.2 起不再用建立時間判斷，避免重新安裝主畫面 App 後，
+   空白新行程把原本尚未出發的行程擠成唯讀。 */
 let viewId=null;
 function latestTrip(){
   return DB.trips.slice().sort((a,b)=>b.createdAt-a.createdAt)[0];
 }
-function trip(){ return DB.trips.find(t=>t.id===viewId) || latestTrip(); }
-function editable(){ const t=trip(); return t && t.id===latestTrip().id; }
+function currentTrip(){
+  return DB.trips.find(t=>t.id===DB.currentTripId) || latestTrip();
+}
+function ensureCurrentTrip(){
+  if(!DB.trips || !DB.trips.length) return;
+  if(!DB.currentTripId || !DB.trips.find(t=>t.id===DB.currentTripId)) DB.currentTripId=latestTrip().id;
+}
+function trip(){ return DB.trips.find(t=>t.id===viewId) || currentTrip(); }
+function editable(){ const t=trip(); const c=currentTrip(); return !!(t && c && t.id===c.id); }
 function touch(){
   const t=trip(); if(t) t.updatedAt=nowTs();
   persist(); schedulePush();
@@ -643,11 +653,10 @@ function memberMeta(m, opts={}){
 function cleanLineUrl(v){
   let s=String(v||'').trim();
   if(!s) return '';
-  /* 允許直接貼 line.me 連結；若只貼 @ID，轉成 LINE 開啟入口。 */
+  /* 允許三種輸入：完整 LINE 連結、官方帳號 @ID、或長輩好輸入的 LINE 顯示名稱／暱稱。 */
   if(/^@/.test(s)) return 'https://line.me/R/ti/p/'+encodeURIComponent(s);
   if(/^line:\/\//i.test(s)) return s;
   if(/^https?:\/\//i.test(s)) return s;
-  /* 一般文字不要自動當網址，避免誤開錯人。 */
   return s;
 }
 function lineHref(v){
@@ -656,17 +665,41 @@ function lineHref(v){
   if(/^line:\/\//i.test(s) || /^https?:\/\//i.test(s)) return s;
   return '';
 }
+function copyText(text){
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+  }catch(e){}
+  return new Promise(resolve=>{
+    const ta=document.createElement('textarea');
+    ta.value=text; ta.style.position='fixed'; ta.style.left='-9999px';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try{ document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(ta); resolve();
+  });
+}
 function openLine(mid){
   const m=memberById(mid);
-  const href=m ? lineHref(m.lineUrl) : '';
-  if(!href){ toast('尚未填 LINE'); return; }
-  location.href=href;
+  const value=m ? cleanLineUrl(m.lineUrl) : '';
+  const href=lineHref(value);
+  if(href){ location.href=href; return; }
+  if(value){
+    copyText(value).then(()=>{
+      toast('已複製 LINE 名稱，請到 LINE 搜尋貼上');
+      setTimeout(()=>{ location.href='line://'; },300);
+    });
+    return;
+  }
+  toast('尚未填 LINE');
+}
+function lineActionText(m){
+  if(!m || !cleanLineUrl(m.lineUrl)) return '尚未填 LINE（點此補 LINE）';
+  return lineHref(m.lineUrl) ? '開啟 LINE' : '複製 LINE 名稱並開 LINE';
 }
 function openLineEditor(mid){
   const m=memberById(mid); if(!m) return;
   sheetHTML('<h2>補 LINE：'+esc(m.name)+'</h2>'+ 
-    '<div class="note">貼上對方提供的 LINE 連結，例如 https://line.me/ti/p/xxxxxx。這是開啟 LINE 資料／加好友入口，不保證直接撥 LINE 電話。</div>'+ 
-    '<div class="field"><label>LINE 連結</label><input id="quickLine" inputmode="url" value="'+esc(m.lineUrl||'')+'" placeholder="例如：https://line.me/ti/p/xxxxxx"></div>'+ 
+    '<div class="note">長輩不用輸入網址。可以只填對方的 <b>LINE 顯示名稱／暱稱</b>，之後按「複製 LINE 名稱並開 LINE」，到 LINE 搜尋貼上即可。<br><br>若對方有提供 LINE 加好友連結，也可以貼完整連結，例如 https://line.me/ti/p/xxxxxx。</div>'+ 
+    '<div class="field"><label>LINE 資料</label><input id="quickLine" inputmode="text" value="'+esc(m.lineUrl||'')+'" placeholder="可填 LINE 名稱、@ID 或 LINE 連結"></div>'+ 
     '<div class="acts">'+
       '<button class="act primary" onclick="saveQuickLine(\''+m.id+'\',false)">儲存 LINE</button>'+ 
       '<button class="act" onclick="saveQuickLine(\''+m.id+'\',true)">儲存後開啟 LINE</button>'+ 
@@ -676,10 +709,10 @@ function openLineEditor(mid){
 function saveQuickLine(mid, openAfter){
   const m=memberById(mid); if(!m) return;
   const line=cleanLineUrl($('quickLine').value);
-  if(!line){ toast('請先輸入 LINE 連結'); return; }
+  if(!line){ toast('請先輸入 LINE 資料'); return; }
   m.lineUrl=line;
   touchMembers(); closeSheet(); renderAll(); toast('LINE 已儲存');
-  if(openAfter && lineHref(m.lineUrl)) setTimeout(()=>openLine(mid),150);
+  if(openAfter) setTimeout(()=>openLine(mid),150);
 }
 
 function telHref(p){
@@ -982,7 +1015,7 @@ function tapSeat(seat){
       closeSheet(); touch(); renderAll();
     }},
     {t:(m&&telHref(m.phone))?'撥打電話：'+cleanPhone(m.phone):'尚未填電話（點此補電話）', fn:()=>{ if(!m) return; if(telHref(m.phone)) callMember(m.id); else openPhoneEditor(m.id); }},
-    {t:(m&&lineHref(m.lineUrl))?'開啟 LINE':'尚未填 LINE（點此補 LINE）', fn:()=>{ if(!m) return; if(lineHref(m.lineUrl)) openLine(m.id); else openLineEditor(m.id); }},
+    {t:lineActionText(m), fn:()=>{ if(!m) return; if(cleanLineUrl(m.lineUrl)) openLine(m.id); else openLineEditor(m.id); }},
     {t:'編輯備註', fn:()=>{ if(m) openNoteEditor(m); }},
     {t:'移出座位（回到未排名單）', cls:'danger', fn:()=>{
       saveUndo('移出座位');
@@ -1233,8 +1266,8 @@ function openContactActions(seat, mid, readonly){
   }else{
     acts.push({t:'尚未填電話（點此補電話）', fn:()=>{ if(m) openPhoneEditor(mid); }});
   }
-  if(m && lineHref(m.lineUrl)){
-    acts.push({t:'開啟 LINE', cls:'primary', fn:()=>openLine(mid)});
+  if(m && cleanLineUrl(m.lineUrl)){
+    acts.push({t:lineActionText(m), cls:'primary', fn:()=>openLine(mid)});
   }else{
     acts.push({t:'尚未填 LINE（點此補 LINE）', fn:()=>{ if(m) openLineEditor(mid); }});
   }
@@ -1296,7 +1329,7 @@ function saveQuickPhone(mid, callAfter){
 function openVersionInfo(){
   sheetHTML('<h2>版本資訊</h2>'+ 
     '<div class="note"><b>'+esc(APP_NAME)+' '+esc(APP_VERSION)+'</b><br>更新日期：'+esc(APP_BUILD)+'<br><br>'+ 
-    '本版重點：新增 LINE 連結欄位、開啟 LINE 功能、刪除重複人員功能；正式介面已完全移除示範資料入口，且不會自動匯入示範資料。<br><br>'+ 
+    '本版重點：新增 LINE 資料欄位、開啟 LINE／複製 LINE 名稱功能、刪除重複人員功能；正式介面已完全移除示範資料入口，且不會自動匯入示範資料。<br><br>'+ 
     '資料安全：更新 GitHub Pages 前端檔案不會主動覆蓋 Supabase 的 bus_state 正式資料。更新前仍建議先匯出備份。</div>'+ 
     '<div class="acts"><button class="act cancel" onclick="closeSheet()">關閉</button></div>');
 }
@@ -1359,21 +1392,29 @@ function deleteMemberHard(mid){
 
 /* ══════════════════ 行程管理 ══════════════════ */
 function openTrips(){
-  const latest=latestTrip();
-  const rows=DB.trips.slice().sort((a,b)=>b.createdAt-a.createdAt).map(t=>{
-    const cur=t.id===latest.id;
+  const curTrip=currentTrip();
+  const rows=DB.trips.slice().sort((a,b)=>(b.updatedAt||b.createdAt)-(a.updatedAt||a.createdAt)).map(t=>{
+    const cur=curTrip && t.id===curTrip.id;
+    const assigned=Object.keys(t.assign||{}).length;
     return '<div class="listrow"><div class="grow"><div class="nm">'+esc(t.name)+
-      (cur?'<span style="color:var(--green);font-size:13px">　目前行程</span>':'')+
-      '<small>'+esc(t.dateText||'')+(cur?'':'　（只能查看）')+'</small></div></div>'+
-      '<button class="mini" onclick="viewTrip(\''+t.id+'\')">打開</button></div>';
+      (cur?'<span style="color:var(--green);font-size:13px">　目前可編輯</span>':'')+
+      '<small>'+esc(t.dateText||'')+'　已排 '+assigned+' 人'+(cur?'':'　（查看）')+'</small></div></div>'+
+      '<button class="mini" onclick="viewTrip(\''+t.id+'\')">打開</button>'+
+      (cur?'':'<button class="mini" onclick="setCurrentTrip(\''+t.id+'\')">設為目前</button>')+
+      '</div>';
   }).join('');
-  sheetHTML('<h2>行程</h2><div class="note">新的出遊按下面的綠色按鈕。舊行程可以打開回看，但不能修改。</div>'+
+  sheetHTML('<h2>行程</h2><div class="note">若原本排好的行程被變成舊行程，按該行的「設為目前」，就會恢復可編輯。這不會刪除人員或座位。</div>'+ 
     rows+
     '<div class="acts" style="margin-top:14px">'+
-      '<button class="act primary" onclick="openNewTrip()">＋ 新增下次出遊</button>'+
+      '<button class="act primary" onclick="openNewTrip()">＋ 新增下次出遊</button>'+ 
       '<button class="act cancel" onclick="closeSheet()">關閉</button></div>');
 }
 function viewTrip(id){ viewId=id; pending=null; closeSheet(); renderAll(); }
+function setCurrentTrip(id){
+  const t=DB.trips.find(x=>x.id===id); if(!t) return;
+  DB.currentTripId=id; viewId=id; pending=null;
+  persist(); schedulePush(); closeSheet(); renderAll(); toast('已設為目前可編輯行程');
+}
 function openNewTrip(){
   sheetHTML('<h2>新增下次出遊</h2>'+
     '<div class="note">座位會自動照上一次的安排，之後再微調就好。</div>'+
@@ -1389,6 +1430,7 @@ function createTrip(){
   const date=$('ntDate').value.trim();
   const t=newTripObj(name, date, latestTrip());
   DB.trips.push(t);
+  DB.currentTripId=t.id;
   viewId=t.id;
   touch(); closeSheet(); setMode('seat');
   toast('已建立「'+name+'」，座位照上次安排');
@@ -1423,7 +1465,7 @@ function openMembers(){
     '<div class="note">可以一筆筆新增，也可以先在電腦用 Excel／Google 試算表編輯 CSV，再回來匯入。CSV 匯入會合併更新，不會自動刪掉沒出現在檔案裡的人。</div>'+ 
     '<div class="field"><label>新增山友</label><input id="nmNew" placeholder="姓名"></div>'+ 
     '<div class="field"><input id="phNew" inputmode="tel" placeholder="電話，可留空"></div>'+ 
-    '<div class="field"><input id="lineNew" inputmode="url" placeholder="LINE 連結，可留空"></div>'+ 
+    '<div class="field"><input id="lineNew" inputmode="text" placeholder="LINE 名稱／連結，可留空"></div>'+ 
     '<div class="field"><label>群組色彩</label>'+groupPickerHtml('gpNew','')+'</div>'+ 
     '<div class="field"><label>座位偏好</label>'+seatPrefPickerHtml('prefNew','')+'</div>'+ 
     '<div class="acts" style="margin-bottom:14px">'+
@@ -1455,7 +1497,7 @@ function editMember(mid){
   sheetHTML('<h2>編輯：'+esc(m.name)+'</h2>'+
     '<div class="field"><label>姓名</label><input id="emName" value="'+esc(m.name)+'"></div>'+
     '<div class="field"><label>電話</label><input id="emPhone" inputmode="tel" value="'+esc(m.phone||'')+'" placeholder="例如：0912-345-678"></div>'+ 
-    '<div class="field"><label>LINE 連結</label><input id="emLine" inputmode="url" value="'+esc(m.lineUrl||'')+'" placeholder="例如：https://line.me/ti/p/xxxxxx"></div>'+ 
+    '<div class="field"><label>LINE 資料</label><input id="emLine" inputmode="text" value="'+esc(m.lineUrl||'')+'" placeholder="可填 LINE 名稱、@ID 或 LINE 連結"></div>'+ 
     '<div class="field"><label>群組色彩</label>'+groupPickerHtml('emGroup',m.group)+'</div>'+ 
     '<div class="field"><label>座位偏好</label>'+seatPrefPickerHtml('emSeatPref',m.seatPref)+'</div>'+ 
     '<div class="field"><label>備註</label><textarea id="emNote">'+esc(m.note||'')+'</textarea></div>'+ 
@@ -1502,7 +1544,7 @@ function downloadTextFile(filename, text, type){
   a.href=URL.createObjectURL(blob); a.download=filename; a.click();
 }
 function memberCsvRows(includeData){
-  const headers=['ID','姓名','電話','LINE連結','群組','座位偏好','備註','停用'];
+  const headers=['ID','姓名','電話','LINE資料','群組','座位偏好','備註','停用'];
   const rows=[headers];
   if(includeData){
     DB.members.forEach(m=>rows.push([m.id,m.name||'',m.phone||'',m.lineUrl||'',validGroup(m.group),seatPrefCsv(m.seatPref),m.note||'',m.inactive?'是':'']));
@@ -1543,7 +1585,7 @@ function parseCsv(text){
 }
 function openMembersCsvImport(){
   sheetHTML('<h2>匯入名冊 CSV</h2>'+ 
-    '<div class="note">先下載空白範本，或匯出現有名冊後在電腦修改。欄位為：ID、姓名、電話、LINE連結、群組、座位偏好、備註、停用。<br><b>ID 請不要改</b>，這樣匯入後原本座位安排會保留。群組可填 1～10，或填你已命名的群組名稱；座位偏好可填「走道優先、靠窗優先、前排優先、後排優先、無偏好」；停用可填「是」。</div>'+ 
+    '<div class="note">先下載空白範本，或匯出現有名冊後在電腦修改。欄位為：ID、姓名、電話、LINE資料、群組、座位偏好、備註、停用。<br><b>ID 請不要改</b>，這樣匯入後原本座位安排會保留。群組可填 1～10，或填你已命名的群組名稱；座位偏好可填「走道優先、靠窗優先、前排優先、後排優先、無偏好」；停用可填「是」。</div>'+ 
     '<div class="acts" style="margin-bottom:12px"><button class="act" onclick="downloadMemberCsvTemplate()">下載空白範本</button></div>'+ 
     '<div class="field"><input type="file" id="memberCsvFile" accept=".csv,text/csv"></div>'+ 
     '<div class="acts">'+ 
@@ -1565,7 +1607,7 @@ function doMemberCsvImport(){
       if(rows.length<2) throw new Error('empty');
       const headers=rows[0].map(h=>String(h||'').trim());
       const idx=name=>headers.findIndex(h=>h===name || h.toLowerCase()===name.toLowerCase());
-      const iId=idx('ID'), iName=idx('姓名'), iPhone=idx('電話'), iLine=idx('LINE連結'), iGroup=idx('群組'), iPref=idx('座位偏好'), iNote=idx('備註'), iInactive=idx('停用');
+      const iId=idx('ID'), iName=idx('姓名'), iPhone=idx('電話'), iLine=(idx('LINE資料')>=0?idx('LINE資料'):idx('LINE連結')),  iGroup=idx('群組'), iPref=idx('座位偏好'), iNote=idx('備註'), iInactive=idx('停用');
       if(iName<0) throw new Error('no name');
       let added=0, updated=0, skipped=0;
       rows.slice(1).forEach(r=>{
@@ -1618,7 +1660,7 @@ function doImport(){
     try{
       const d=JSON.parse(rd.result);
       if(!d.trips || !d.members) throw 0;
-      DB=d; viewId=latestTrip().id;
+      DB=d; ensureCurrentTrip(); viewId=currentTrip().id;
       persist(); schedulePush(); closeSheet(); renderAll(); toast('匯入完成');
     }catch(e){ toast('這個檔案不是有效的備份檔'); }
   };
@@ -1676,7 +1718,8 @@ async function pull(showResult){
     if(rows.length) mergeRemote(rows[0].data);
     await push(); /* 合併後把最新結果送回雲端 */
     persist();
-    if(!viewId || !DB.trips.find(t=>t.id===viewId)) viewId=latestTrip().id;
+    ensureCurrentTrip();
+    if(!viewId || !DB.trips.find(t=>t.id===viewId)) viewId=currentTrip().id;
     renderAll();
     syncUI('ok','已同步 '+new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}));
     if(showResult) toast('同步成功');
@@ -1708,6 +1751,7 @@ function schedulePush(){
 }
 function mergeRemote(r){
   if(!r) return;
+  if(r.currentTripId) DB.currentTripId=r.currentTripId;
   if((r.membersUpdatedAt||0) > (DB.membersUpdatedAt||0)){
     DB.members=(r.members||[]).map(normalizeMember); DB.groupNames={...defaultGroupNames(), ...(r.groupNames||{})}; DB.membersUpdatedAt=r.membersUpdatedAt||0;
   }
@@ -1813,7 +1857,8 @@ async function shareChart(){
 
 /* ══════════════════ 啟動 ══════════════════ */
 load();
-viewId=latestTrip().id;
+ensureCurrentTrip();
+viewId=currentTrip().id;
 renderAll();
 if(syncReady()) pull(); else syncUI('','尚未設定同步');
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
