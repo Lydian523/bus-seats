@@ -1,7 +1,7 @@
 {
   "name": "山友團座位表",
   "short_name": "座位表",
-  "description": "山友團座位表 v5.5.2：修正目前行程可編輯判定，簡化 LINE 資料輸入。",
+  "description": "山友團座位表 v5.5.3：補上名單總覽 LINE 小圖示，保留目前行程修正與簡化 LINE 輸入。",
   "display": "standalone",
   "start_url": "./",
   "background_color": "#F3F4F1",

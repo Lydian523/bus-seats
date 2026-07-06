@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#2E6B4E">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>山友團座位表 v5.5.2</title>
+<title>山友團座位表 v5.5.3</title>
 <style>
   :root{
     --green:#2E6B4E; --green-dk:#24523C; --green-lt:#DFF0E2;
@@ -274,12 +274,13 @@
   .grid-tab.on{background:var(--green);border-color:var(--green);color:#fff}
   .member-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-bottom:8px}
   .member-card{position:relative;text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:12px 10px;min-height:78px;color:var(--ink);font-size:16px;font-weight:800;box-shadow:0 1px 0 rgba(0,0,0,.03)}
-  .member-card .name{display:block;font-size:18px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:30px}
+  .member-card .name{display:block;font-size:18px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:78px}
   .member-card .meta{display:block;margin-top:7px;font-size:13px;font-weight:700;color:var(--muted);line-height:1.3}
   .member-card .badges{position:absolute;right:8px;top:8px;display:flex;gap:4px}
   .member-card .pill{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;min-width:20px;height:20px;padding:0 5px;font-size:11px;font-weight:900;border:1px solid transparent}
   .member-card .pill.note{background:#FFE39B;border-color:#D6A437;color:#7A4B00}
   .member-card .pill.phone{background:#EEF6FF;border-color:#B8CBE1;color:#355C80}
+  .member-card .pill.line{background:#EAF8EE;border-color:#A9DDB9;color:#287A3E}
   .member-card.leave{background:#F1F2F0;color:#98A09B;border-color:#C9CEC9}
   .member-card.unassigned{border-color:#DDBB64;background:#FFF9E8}
   .member-card.assigned{border-color:#9DB3A6;background:#F4F8F5}
@@ -405,7 +406,7 @@
 <div id="toast"></div>
 
 <footer>
-  <span id="appVersionText">山友團座位表 v5.5.2</span>
+  <span id="appVersionText">山友團座位表 v5.5.3</span>
   <button onclick="openVersionInfo()">版本資訊</button>
   <button onclick="openAdmin()">管理（維護者用）</button>
 </footer>
@@ -453,7 +454,7 @@ function seatsOf(layoutV){
 }
 
 /* ══════════════════ 資料 ══════════════════ */
-const APP_VERSION='v5.5.2';
+const APP_VERSION='v5.5.3';
 const APP_BUILD='2026-07-06 熱修';
 const APP_NAME='山友團座位表';
 const KEY='bustool-v2';
@@ -1195,7 +1196,7 @@ function rosterGridCard(m){
   else meta.push('出席');
   const gp=groupLabel(m); if(gp) meta.push(gp);
   const sp=validSeatPref(m.seatPref); if(sp) meta.push('偏好：'+seatPrefName(sp));
-  const badges='<span class="badges">'+(hasMemberNote(m)?'<span class="pill note">備</span>':'')+(telHref(m.phone)?'<span class="pill phone">☎</span>':'')+(lineHref(m.lineUrl)?'<span class="pill phone">LINE</span>':'')+'</span>';
+  const badges='<span class="badges">'+(hasMemberNote(m)?'<span class="pill note">備</span>':'')+(telHref(m.phone)?'<span class="pill phone">☎</span>':'')+(cleanLineUrl(m.lineUrl)?'<span class="pill line">LINE</span>':'')+'</span>';
   return '<button class="'+cls.join(' ')+'" onclick="tapRosterGridMember(\''+m.id+'\')">'+badges+'<span class="name">'+esc(m.name)+'</span><span class="meta">'+esc(meta.join('・'))+'</span></button>';
 }
 function openRosterGrid(filter){
@@ -1329,7 +1330,7 @@ function saveQuickPhone(mid, callAfter){
 function openVersionInfo(){
   sheetHTML('<h2>版本資訊</h2>'+ 
     '<div class="note"><b>'+esc(APP_NAME)+' '+esc(APP_VERSION)+'</b><br>更新日期：'+esc(APP_BUILD)+'<br><br>'+ 
-    '本版重點：新增 LINE 資料欄位、開啟 LINE／複製 LINE 名稱功能、刪除重複人員功能；正式介面已完全移除示範資料入口，且不會自動匯入示範資料。<br><br>'+ 
+    '本版重點：新增 LINE 資料欄位、開啟 LINE／複製 LINE 名稱功能、名單總覽 LINE 小圖示、刪除重複人員功能；正式介面已完全移除示範資料入口，且不會自動匯入示範資料。<br><br>'+ 
     '資料安全：更新 GitHub Pages 前端檔案不會主動覆蓋 Supabase 的 bus_state 正式資料。更新前仍建議先匯出備份。</div>'+ 
     '<div class="acts"><button class="act cancel" onclick="closeSheet()">關閉</button></div>');
 }
