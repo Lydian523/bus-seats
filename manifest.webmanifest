@@ -6,7 +6,16 @@
   "background_color": "#F3F4F1",
   "theme_color": "#2E6B4E",
   "icons": [
-    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
-  ]
+    {
+      "src": "icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "description": "山友團座位表 v5.5：LINE 聯絡、刪除重複人員、正式版移除示範資料入口。"
 }

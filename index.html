@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#2E6B4E">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>山友團座位表 v5.3</title>
+<title>山友團座位表 v5.5</title>
 <style>
   :root{
     --green:#2E6B4E; --green-dk:#24523C; --green-lt:#DFF0E2;
@@ -405,7 +405,8 @@
 <div id="toast"></div>
 
 <footer>
-  山友團座位表
+  <span id="appVersionText">山友團座位表 v5.5</span>
+  <button onclick="openVersionInfo()">版本資訊</button>
   <button onclick="openAdmin()">管理（維護者用）</button>
 </footer>
 
@@ -452,6 +453,9 @@ function seatsOf(layoutV){
 }
 
 /* ══════════════════ 資料 ══════════════════ */
+const APP_VERSION='v5.5';
+const APP_BUILD='2026-07-06';
+const APP_NAME='山友團座位表';
 const KEY='bustool-v2';
 const SYNCKEY='bustool-sync';
 let DB;   /* {members:[{id,name,phone,group,seatPref,note,inactive}], groupNames, membersUpdatedAt, trips:[...]} */
@@ -605,7 +609,7 @@ function selectSeatPref(id, value){
   if(btn) btn.classList.add('on');
 }
 function normalizeMember(m){
-  return {...m, phone:cleanPhone(m&&m.phone), group:validGroup(m&&m.group), seatPref:validSeatPref(m&&m.seatPref)};
+  return {...m, phone:cleanPhone(m&&m.phone), lineUrl:cleanLineUrl(m&&m.lineUrl), group:validGroup(m&&m.group), seatPref:validSeatPref(m&&m.seatPref)};
 }
 function groupPickerHtml(id, value){
   const v=validGroup(value);
@@ -760,7 +764,7 @@ function renderRoster(){
   const un = activeMembers().filter(m=>!seated.has(m.id));
   let html;
   if(!DB.members.length){
-    html='<div class="hint">名冊還是空的。<br>請維護者到下方「管理」新增山友名單，或載入示範資料。</div>';
+    html='<div class="hint">名冊還是空的。<br>請維護者到下方「管理」新增山友名單，或匯入名冊 CSV。</div>';
   }else{
     html = un.map(m=>{
       const sel = pending&&pending.kind==='assign'&&pending.memberId===m.id?' sel':'';
@@ -935,6 +939,7 @@ function tapSeat(seat){
       closeSheet(); touch(); renderAll();
     }},
     {t:(m&&telHref(m.phone))?'撥打電話：'+cleanPhone(m.phone):'尚未填電話（點此補電話）', fn:()=>{ if(!m) return; if(telHref(m.phone)) callMember(m.id); else openPhoneEditor(m.id); }},
+    {t:(m&&lineHref(m.lineUrl))?'開啟 LINE':'尚未填 LINE（點此補 LINE）', fn:()=>{ if(!m) return; if(lineHref(m.lineUrl)) openLine(m.id); else openLineEditor(m.id); }},
     {t:'編輯備註', fn:()=>{ if(m) openNoteEditor(m); }},
     {t:'移出座位（回到未排名單）', cls:'danger', fn:()=>{
       saveUndo('移出座位');
@@ -1114,7 +1119,7 @@ function rosterGridCard(m){
   else meta.push('出席');
   const gp=groupLabel(m); if(gp) meta.push(gp);
   const sp=validSeatPref(m.seatPref); if(sp) meta.push('偏好：'+seatPrefName(sp));
-  const badges='<span class="badges">'+(hasMemberNote(m)?'<span class="pill note">備</span>':'')+(telHref(m.phone)?'<span class="pill phone">☎</span>':'')+'</span>';
+  const badges='<span class="badges">'+(hasMemberNote(m)?'<span class="pill note">備</span>':'')+(telHref(m.phone)?'<span class="pill phone">☎</span>':'')+(lineHref(m.lineUrl)?'<span class="pill phone">LINE</span>':'')+'</span>';
   return '<button class="'+cls.join(' ')+'" onclick="tapRosterGridMember(\''+m.id+'\')">'+badges+'<span class="name">'+esc(m.name)+'</span><span class="meta">'+esc(meta.join('・'))+'</span></button>';
 }
 function openRosterGrid(filter){
@@ -1166,9 +1171,11 @@ let _acts=[];
 function contactNote(m){
   if(!m) return '（資料已移除）';
   const phone = cleanPhone(m.phone);
+  const line = cleanLineUrl(m.lineUrl);
   const note = String(m.note||'').trim();
   const gl = groupLabel(m);
   let html = phone ? '電話：<b>'+esc(phone)+'</b>' : '<b>尚未填電話</b>';
+  html += line ? '<br>LINE：<b>'+esc(line)+'</b>' : '<br><b>尚未填 LINE</b>';
   if(gl) html += '<br>群組：<b>'+esc(gl)+'</b>';
   const sp=validSeatPref(m.seatPref);
   if(sp) html += '<br>座位偏好：<b>'+esc(seatPrefName(sp))+'</b>';
@@ -1182,6 +1189,11 @@ function openContactActions(seat, mid, readonly){
     acts.push({t:'撥打電話：'+cleanPhone(m.phone), cls:'primary', fn:()=>callMember(mid)});
   }else{
     acts.push({t:'尚未填電話（點此補電話）', fn:()=>{ if(m) openPhoneEditor(mid); }});
+  }
+  if(m && lineHref(m.lineUrl)){
+    acts.push({t:'開啟 LINE', cls:'primary', fn:()=>openLine(mid)});
+  }else{
+    acts.push({t:'尚未填 LINE（點此補 LINE）', fn:()=>{ if(m) openLineEditor(mid); }});
   }
   if(!readonly && m){
     acts.push({t:'編輯旅客資料', fn:()=>editMember(m.id)});
@@ -1236,6 +1248,72 @@ function saveQuickPhone(mid, callAfter){
   if(callAfter && telHref(m.phone)) setTimeout(()=>callMember(mid),150);
 }
 
+
+/* ══════════════════ 版本資訊與刪除人員 ══════════════════ */
+function openVersionInfo(){
+  sheetHTML('<h2>版本資訊</h2>'+ 
+    '<div class="note"><b>'+esc(APP_NAME)+' '+esc(APP_VERSION)+'</b><br>更新日期：'+esc(APP_BUILD)+'<br><br>'+ 
+    '本版重點：新增 LINE 連結欄位、開啟 LINE 功能、刪除重複人員功能；正式介面已完全移除示範資料入口，且不會自動匯入示範資料。<br><br>'+ 
+    '資料安全：更新 GitHub Pages 前端檔案不會主動覆蓋 Supabase 的 bus_state 正式資料。更新前仍建議先匯出備份。</div>'+ 
+    '<div class="acts"><button class="act cancel" onclick="closeSheet()">關閉</button></div>');
+}
+function duplicateMemberGroups(){
+  const map={};
+  DB.members.forEach(m=>{
+    const key=String(m.name||'').trim().replace(/\s+/g,'');
+    if(!key) return;
+    (map[key]=map[key]||[]).push(m);
+  });
+  return Object.values(map).filter(g=>g.length>1);
+}
+function openDuplicateMembers(){
+  const groups=duplicateMemberGroups();
+  if(!groups.length){
+    sheetHTML('<h2>刪除重複人員</h2><div class="note">目前沒有偵測到同姓名重複人員。</div><div class="acts"><button class="act cancel" onclick="openAdmin()">返回管理</button></div>');
+    return;
+  }
+  const rows=groups.map(g=>{
+    const title=esc(g[0].name)+' <small>重複 '+g.length+' 筆</small>';
+    const items=g.map(m=>{
+      const sid=seatOf(m.id); const st=sid?seatsOf(trip().layoutV).find(s=>s.id===sid):null;
+      const meta=[];
+      if(st) meta.push(st.no+' 號'); else meta.push('未排');
+      if(m.phone) meta.push('電話：'+m.phone);
+      if(m.lineUrl) meta.push('LINE');
+      if(m.note) meta.push('備註');
+      if(m.inactive) meta.push('停用');
+      return '<div class="listrow"><div class="grow"><div class="nm">'+esc(m.name)+'<small>'+esc(meta.join('　'))+'</small></div></div><button class="mini" onclick="editMember(\''+m.id+'\')">查看</button><button class="mini off" onclick="confirmDeleteMember(\''+m.id+'\')">刪除</button></div>';
+    }).join('');
+    return '<div class="panel" style="margin-bottom:10px"><h3>'+title+'</h3>'+items+'</div>';
+  }).join('');
+  sheetHTML('<h2>刪除重複人員</h2><div class="note">只刪明顯重複、空白資料較多、未使用的那一筆。刪除後會同步清掉該人的座位、出席與點名引用。</div>'+rows+'<div class="acts"><button class="act cancel" onclick="openAdmin()">返回管理</button></div>');
+}
+function confirmDeleteMember(mid){
+  const m=memberById(mid); if(!m) return;
+  const sid=seatOf(mid); const seat=sid?seatsOf(trip().layoutV).find(s=>s.id===sid):null;
+  const meta=[];
+  if(seat) meta.push('目前座位：'+seat.no+' 號，刪除後會清空該座位');
+  if(m.phone) meta.push('電話：'+m.phone);
+  if(m.lineUrl) meta.push('有 LINE 連結');
+  if(m.note) meta.push('有備註');
+  sheetHTML('<h2>永久刪除：'+esc(m.name)+'</h2>'+ 
+    '<div class="note"><b>此動作無法復原。</b><br>這會從目前名冊移除此人，並清掉所有行程中引用他的座位、請假與點名資料。<br>'+(meta.length?'<br>'+esc(meta.join('｜')):'')+'</div>'+ 
+    '<div class="acts"><button class="act danger" onclick="deleteMemberHard(\''+m.id+'\')">確認永久刪除</button><button class="act cancel" onclick="openDuplicateMembers()">取消</button></div>');
+}
+function deleteMemberHard(mid){
+  const m=memberById(mid); if(!m) return;
+  DB.members=DB.members.filter(x=>x.id!==mid);
+  (DB.trips||[]).forEach(t=>{
+    Object.keys(t.assign||{}).forEach(sid=>{ if(t.assign[sid]===mid) delete t.assign[sid]; });
+    t.leave=(t.leave||[]).filter(x=>x!==mid);
+    const validSeats=new Set(Object.keys(t.assign||{}));
+    t.boarded=(t.boarded||[]).filter(sid=>validSeats.has(sid));
+    t.updatedAt=nowTs();
+  });
+  pending=null;
+  touchMembers(); closeSheet(); renderAll(); toast('已刪除 '+m.name);
+}
+
 /* ══════════════════ 行程管理 ══════════════════ */
 function openTrips(){
   const latest=latestTrip();
@@ -1278,10 +1356,11 @@ function openAdmin(){
   sheetHTML('<h2>管理</h2><div class="note">這一頁給系統維護者使用。</div>'+
     '<div class="acts">'+
       '<button class="act" onclick="openMembers()">名冊管理（'+DB.members.length+' 人）</button>'+
+      '<button class="act" onclick="openDuplicateMembers()">刪除重複人員</button>'+
       '<button class="act" onclick="openSync()">雲端同步設定</button>'+
       '<button class="act" onclick="exportBackup()">匯出備份檔</button>'+
       '<button class="act" onclick="openImport()">匯入備份檔</button>'+
-      (DB.members.length?'':'<button class="act" onclick="loadDemo()">載入示範資料（42 位山友）</button>')+
+      '<button class="act" onclick="openVersionInfo()">版本資訊</button>'+
       '<button class="act cancel" onclick="closeSheet()">關閉</button></div>');
 }
 
@@ -1301,6 +1380,7 @@ function openMembers(){
     '<div class="note">可以一筆筆新增，也可以先在電腦用 Excel／Google 試算表編輯 CSV，再回來匯入。CSV 匯入會合併更新，不會自動刪掉沒出現在檔案裡的人。</div>'+ 
     '<div class="field"><label>新增山友</label><input id="nmNew" placeholder="姓名"></div>'+ 
     '<div class="field"><input id="phNew" inputmode="tel" placeholder="電話，可留空"></div>'+ 
+    '<div class="field"><input id="lineNew" inputmode="url" placeholder="LINE 連結，可留空"></div>'+ 
     '<div class="field"><label>群組色彩</label>'+groupPickerHtml('gpNew','')+'</div>'+ 
     '<div class="field"><label>座位偏好</label>'+seatPrefPickerHtml('prefNew','')+'</div>'+ 
     '<div class="acts" style="margin-bottom:14px">'+
@@ -1308,6 +1388,7 @@ function openMembers(){
       '<button class="act" onclick="exportMembersCsv()">匯出名冊 CSV</button>'+ 
       '<button class="act" onclick="openMembersCsvImport()">匯入名冊 CSV</button>'+ 
       '<button class="act" onclick="openGroupNameEditor()">編輯群組名稱</button>'+ 
+      '<button class="act danger" onclick="openDuplicateMembers()">刪除重複人員</button>'+ 
     '</div>'+rows+
     '<div class="acts" style="margin-top:14px"><button class="act cancel" onclick="openAdmin()">返回管理</button></div>');
 }
@@ -1315,9 +1396,10 @@ function addMember(){
   const name=$('nmNew').value.trim();
   if(!name){ toast('請先輸入姓名'); return; }
   const phone=cleanPhone($('phNew').value);
+  const lineUrl=cleanLineUrl($('lineNew').value);
   const group=validGroup($('gpNew').value);
   const seatPref=validSeatPref($('prefNew').value);
-  DB.members.push({id:newId('m'), name, phone, group, seatPref, note:'', inactive:false});
+  DB.members.push({id:newId('m'), name, phone, lineUrl, group, seatPref, note:'', inactive:false});
   touchMembers(); openMembers(); toast('已新增 '+name);
 }
 function toggleMember(mid){
@@ -1330,18 +1412,20 @@ function editMember(mid){
   sheetHTML('<h2>編輯：'+esc(m.name)+'</h2>'+
     '<div class="field"><label>姓名</label><input id="emName" value="'+esc(m.name)+'"></div>'+
     '<div class="field"><label>電話</label><input id="emPhone" inputmode="tel" value="'+esc(m.phone||'')+'" placeholder="例如：0912-345-678"></div>'+ 
+    '<div class="field"><label>LINE 連結</label><input id="emLine" inputmode="url" value="'+esc(m.lineUrl||'')+'" placeholder="例如：https://line.me/ti/p/xxxxxx"></div>'+ 
     '<div class="field"><label>群組色彩</label>'+groupPickerHtml('emGroup',m.group)+'</div>'+ 
     '<div class="field"><label>座位偏好</label>'+seatPrefPickerHtml('emSeatPref',m.seatPref)+'</div>'+ 
     '<div class="field"><label>備註</label><textarea id="emNote">'+esc(m.note||'')+'</textarea></div>'+ 
     '<div class="acts">'+
       '<button class="act primary" onclick="saveMember(\''+m.id+'\')">儲存</button>'+
+      '<button class="act danger" onclick="confirmDeleteMember(\''+m.id+'\')">刪除這位人員</button>'+
       '<button class="act cancel" onclick="openMembers()">返回</button></div>');
 }
 function saveMember(mid){
   const m=memberById(mid); if(!m) return;
   const name=$('emName').value.trim();
   if(!name){ toast('姓名不能是空的'); return; }
-  m.name=name; m.phone=cleanPhone($('emPhone').value); m.group=validGroup($('emGroup').value); m.seatPref=validSeatPref($('emSeatPref').value); m.note=$('emNote').value.trim();
+  m.name=name; m.phone=cleanPhone($('emPhone').value); m.lineUrl=cleanLineUrl($('emLine').value); m.group=validGroup($('emGroup').value); m.seatPref=validSeatPref($('emSeatPref').value); m.note=$('emNote').value.trim();
   touchMembers(); openMembers(); toast('已儲存');
 }
 
@@ -1362,27 +1446,7 @@ function resetGroupNames(){
   DB.groupNames=defaultGroupNames(); touchMembers(); openGroupNameEditor(); toast('已恢復預設名稱');
 }
 
-function loadDemo(){
-  const names=[
-    ['陳金水','會暈車，需坐前排'],['林美惠','與王榮發夫妻，要坐一起'],['王榮發',''],
-    ['張淑芬',''],['李坤山','重聽，講話要大聲'],['黃玉蘭','膝蓋不好，想靠走道'],
-    ['吳進財',''],['劉阿香',''],['蔡文雄',''],['許秀英','吃素'],
-    ['鄭春木',''],['謝麗華',''],['洪天賜',''],['郭素梅',''],
-    ['曾國安',''],['賴金鳳','和郭素梅是鄰居，喜歡坐附近'],['周添丁',''],['徐雅雲',''],
-    ['江海樹',''],['呂桂花',''],['蕭正義',''],['葉春嬌',''],
-    ['程志明',''],['簡月娥',''],['鍾德旺',''],['游淑貞',''],
-    ['彭火旺',''],['廖秀琴',''],['白長壽','常遲到，休息站要多留意'],['康玉霞',''],
-    ['方振宗',''],['翁彩雲',''],['石大山',''],['龔美玉',''],
-    ['卓明輝',''],['殷秋菊',''],['柯萬得',''],['饒素芬',''],
-    ['湯金龍',''],['雷麗珍',''],['傅山河',''],['駱惠美',''],
-  ];
-  names.forEach((n,i)=>{
-    const group = (n[0]==='林美惠'||n[0]==='王榮發') ? '1' : (n[0]==='郭素梅'||n[0]==='賴金鳳') ? '2' : '';
-    const seatPref = n[1].includes('走道') ? 'aisle' : (n[1].includes('前排')||n[1].includes('暈車')) ? 'front' : '';
-    DB.members.push({id:newId('m'), name:n[0], phone:'', group, seatPref, note:n[1], inactive:false});
-  });
-  touchMembers(); closeSheet(); renderAll(); toast('已載入 42 位示範山友');
-}
+function loadDemo(){ toast('正式版已移除示範資料'); }
 
 /* CSV 名冊匯入／匯出 */
 function csvEscape(v){
@@ -1395,10 +1459,10 @@ function downloadTextFile(filename, text, type){
   a.href=URL.createObjectURL(blob); a.download=filename; a.click();
 }
 function memberCsvRows(includeData){
-  const headers=['ID','姓名','電話','群組','座位偏好','備註','停用'];
+  const headers=['ID','姓名','電話','LINE連結','群組','座位偏好','備註','停用'];
   const rows=[headers];
   if(includeData){
-    DB.members.forEach(m=>rows.push([m.id,m.name||'',m.phone||'',validGroup(m.group),seatPrefCsv(m.seatPref),m.note||'',m.inactive?'是':'']));
+    DB.members.forEach(m=>rows.push([m.id,m.name||'',m.phone||'',m.lineUrl||'',validGroup(m.group),seatPrefCsv(m.seatPref),m.note||'',m.inactive?'是':'']));
   }
   return '\ufeff'+rows.map(r=>r.map(csvEscape).join(',')).join('\r\n');
 }
@@ -1436,7 +1500,7 @@ function parseCsv(text){
 }
 function openMembersCsvImport(){
   sheetHTML('<h2>匯入名冊 CSV</h2>'+ 
-    '<div class="note">先下載空白範本，或匯出現有名冊後在電腦修改。欄位為：ID、姓名、電話、群組、座位偏好、備註、停用。<br><b>ID 請不要改</b>，這樣匯入後原本座位安排會保留。群組可填 1～10，或填你已命名的群組名稱；座位偏好可填「走道優先、靠窗優先、前排優先、後排優先、無偏好」；停用可填「是」。</div>'+ 
+    '<div class="note">先下載空白範本，或匯出現有名冊後在電腦修改。欄位為：ID、姓名、電話、LINE連結、群組、座位偏好、備註、停用。<br><b>ID 請不要改</b>，這樣匯入後原本座位安排會保留。群組可填 1～10，或填你已命名的群組名稱；座位偏好可填「走道優先、靠窗優先、前排優先、後排優先、無偏好」；停用可填「是」。</div>'+ 
     '<div class="acts" style="margin-bottom:12px"><button class="act" onclick="downloadMemberCsvTemplate()">下載空白範本</button></div>'+ 
     '<div class="field"><input type="file" id="memberCsvFile" accept=".csv,text/csv"></div>'+ 
     '<div class="acts">'+ 
@@ -1458,7 +1522,7 @@ function doMemberCsvImport(){
       if(rows.length<2) throw new Error('empty');
       const headers=rows[0].map(h=>String(h||'').trim());
       const idx=name=>headers.findIndex(h=>h===name || h.toLowerCase()===name.toLowerCase());
-      const iId=idx('ID'), iName=idx('姓名'), iPhone=idx('電話'), iGroup=idx('群組'), iPref=idx('座位偏好'), iNote=idx('備註'), iInactive=idx('停用');
+      const iId=idx('ID'), iName=idx('姓名'), iPhone=idx('電話'), iLine=idx('LINE連結'), iGroup=idx('群組'), iPref=idx('座位偏好'), iNote=idx('備註'), iInactive=idx('停用');
       if(iName<0) throw new Error('no name');
       let added=0, updated=0, skipped=0;
       rows.slice(1).forEach(r=>{
@@ -1471,6 +1535,7 @@ function doMemberCsvImport(){
         else updated++;
         m.name=name;
         if(iPhone>=0) m.phone=cleanPhone(r[iPhone]);
+        if(iLine>=0) m.lineUrl=cleanLineUrl(r[iLine]);
         if(iGroup>=0) m.group=validGroup(r[iGroup]);
         if(iPref>=0) m.seatPref=validSeatPref(r[iPref]);
         if(iNote>=0) m.note=String(r[iNote]||'').trim();
